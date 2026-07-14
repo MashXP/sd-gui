@@ -11,9 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Created the standalone repository structure for `sd-gui`.
 - Added the main launcher entrypoint `sd-gui.py` to launch the GUI standalone.
 - Included template files `profiles/env_here`, `models/put_models_here`, and `output/output_here` to track folder structures in Git.
-- Copied `anima.env` and `bonsai.env` profiles from the original `sd-cli` repository as examples.
-- Configured `.gitignore` to keep python caches, models, and outputs out of Git tracking.
-- Created `README.md` containing requirements and setup instructions.
+- Copied all profile `.env` files (`anima.env`, `bonsai.env`) from the original repository into `profiles/`.
+- Copied the `ip` network-utility helper script to the root.
+- Configured `.gitignore` to keep python caches, model weights, output images, and profile configuration files (except `anima.env` and `bonsai.env`) out of Git tracking while retaining empty structures.
+- Created `README.md` containing requirements, running instructions, and optimal size presets, usage documentation for the `ip` utility script.
+- Added help option (`-h`/`--help`) and descriptive headers to the `ip` network-utility script targeting local `sd-server` navigation.
 
 ### Changed
 - Migrated the core GUI modules (`app.py`, `profile_manager.py`, `runner.py`, and `styles.py`) from `sd-cli/gui_desktop/src/` to `sd-gui/src/`.
