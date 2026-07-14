@@ -30,6 +30,21 @@ A standalone Tkinter-based desktop interface to manage, configure, and execute `
    python sd-gui.py
    ```
 
+## Network Utility (`ip`)
+
+The repository includes a helper script `ip` to quickly detect your machine's primary local network IP and generate a shareable URL to access and navigate to the running `sd-server` instance.
+
+### Usage
+
+Run the utility from the repository root:
+```bash
+./ip [port]
+```
+
+### Options / Arguments
+- **`port`**: Optional port number to target (defaults to `1234`).
+- **`-h`, `--help`**: Show usage information.
+
 ## Optimal Size Configs Reference
 
 ### 16:9 / 9:16 (Widescreen)

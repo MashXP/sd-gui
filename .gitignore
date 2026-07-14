@@ -6,6 +6,13 @@ __pycache__/
 models/*
 !models/put_models_here
 
+# Ignore all profiles except anima, bonsai example .env
+profiles/*
+!profiles/anima.env
+!profiles/bonsai.env
+
 # Ignore all generated outputs except the placeholder
 output/*
 !output/output_here
+
+_legacy

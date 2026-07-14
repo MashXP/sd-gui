@@ -1,0 +1,69 @@
+#!/bin/bash
+
+# ==============================================================================
+# IP Utility Helper
+# Detects the primary local IP address of this machine to quickly access
+# and navigate to the sd-server instance hosted on the local network.
+# ==============================================================================
+
+# Show help if requested
+if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+    echo "Usage: $0 [port]"
+    echo ""
+    echo "Detects the primary local IP address of this machine to quickly access"
+    echo "and navigate to the sd-server instance hosted on the local network."
+    echo ""
+    echo "Options:"
+    echo "  -h, --help  Show this help message and exit"
+    echo ""
+    echo "Arguments:"
+    echo "  [port]      Optional port number to target (default: 1234)"
+    exit 0
+fi
+
+# Default port if not provided
+PORT=${1:-1234}
+
+# Validate that port is a valid number
+if ! [[ "$PORT" =~ ^[0-9]+$ ]] || [ "$PORT" -lt 1 ] || [ "$PORT" -gt 65535 ]; then
+    echo -e "\e[31mError: Port must be a valid number between 1 and 65535.\e[0m" >&2
+    echo "Usage: $0 [port]" >&2
+    exit 1
+fi
+
+# Detect primary local IP
+get_local_ip() {
+    local ip=""
+    
+    # 1. Try checking IP route via public DNS (most accurate for active interface)
+    if command -v ip >/dev/null 2>&1; then
+        ip=$(ip route get 1.1.1.1 2>/dev/null | grep -oP 'src \K\S+')
+    fi
+    
+    # 2. Fallback to hostname -I
+    if [ -z "$ip" ] && command -v hostname >/dev/null 2>&1; then
+        ip=$(hostname -I 2>/dev/null | awk '{print $1}')
+    fi
+    
+    # 3. Fallback to ip addr listing
+    if [ -z "$ip" ] && command -v ip >/dev/null 2>&1; then
+        ip=$(ip -4 addr show | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | grep -v '127.0.0.1' | head -n 1)
+    fi
+    
+    echo "$ip"
+}
+
+IP=$(get_local_ip)
+
+if [ -z "$IP" ]; then
+    echo -e "\e[31mCould not detect local IP address.\e[0m" >&2
+    echo -e "Please ensure you are connected to a network." >&2
+    exit 1
+fi
+
+echo -e "\e[34m==================================================\e[0m"
+echo -e "\e[32m🚀 Server is accessible locally on your network!\e[0m"
+echo -e "\e[34m==================================================\e[0m"
+echo -e "🔗 URL: \e[4;36mhttp://${IP}:${PORT}\e[0m"
+echo -e "🔒 Firewall (Optional): \e[90msudo ufw allow ${PORT}/tcp\e[0m"
+echo -e "\e[34m==================================================\e[0m"
