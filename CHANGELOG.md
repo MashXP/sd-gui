@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Copied all profile `.env` files (`anima.env`, `bonsai.env`) from the original repository into `profiles/`.
 - Copied the `ip` network-utility helper script to the root.
 - Configured `.gitignore` to keep python caches, model weights, output images (except `output_anima_demo.png`), and profile configuration files (except `anima.env` and `bonsai.env`) out of Git tracking.
-- Created `README.md` containing requirements, running instructions, and optimal size presets, usage documentation for the `ip` utility script.
+- Created `README.md` containing requirements, running instructions, optimal size presets, usage documentation for the `ip` utility script, preview images (`gui_preview.png` and `output_anima_demo.png`), and citations/credits for `stable-diffusion.cpp` and the `Anima` model.
 - Added help option (`-h`/`--help`) and descriptive headers to the `ip` network-utility script targeting local `sd-server` navigation.
 
 ### Changed
