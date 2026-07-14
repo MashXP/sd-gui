@@ -1,0 +1,11 @@
+# Python bytecode & cache
+__pycache__/
+*.pyc
+
+# Ignore all model files except the placeholder
+models/*
+!models/put_models_here
+
+# Ignore all generated outputs except the placeholder
+output/*
+!output/output_here
