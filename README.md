@@ -4,8 +4,6 @@ A standalone Tkinter-based desktop interface to manage, configure, and execute `
 
 ![GUI Preview](./gui_preview.png)
 
-![Anima Demo Output](./output/output_anima_demo.png)
-
 ## Requirements
 
 1. **Python 3** with `tkinter` library.
@@ -70,3 +68,7 @@ Run the utility from the repository root:
 
 - **stable-diffusion.cpp**: A lightweight, pure C/C++ inference implementation for Stable Diffusion, developed by [leejet/stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp).
 - **Anima Model**: A 2-billion-parameter text-to-image model optimized for anime illustrations, developed by [CircleStone Labs & Comfy Org](https://huggingface.co/circlestone-labs/Anima). Community GGUF format quantizations are hosted by [n-Arno/Anima-P3-Turbo-AIO-Q4_K](https://huggingface.co/n-Arno/Anima-P3-Turbo-AIO-Q4_K).
+
+![Anima Demo Output](./output/output_anima_demo.png)
+
+> A clickbaity image : )
