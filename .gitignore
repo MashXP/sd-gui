@@ -11,8 +11,8 @@ profiles/*
 !profiles/anima.env
 !profiles/bonsai.env
 
-# Ignore all generated outputs except the placeholder
+# Ignore all generated outputs except the demo image
 output/*
-!output/output_here
+!output/output_anima_demo.png
 
 _legacy
