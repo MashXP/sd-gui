@@ -32,9 +32,9 @@ class ProcessRunner:
             self.process.stdout.close()
             
             status = self.process.wait()
-            self.log_queue.put(f"\n🛑 Process exited with code {status}\n")
+            self.log_queue.put(f"\nProcess exited with code {status}\n")
         except Exception as e:
-            self.log_queue.put(f"\n❌ Error starting process: {str(e)}\n")
+            self.log_queue.put(f"\nError starting process: {str(e)}\n")
         finally:
             self.is_running = False
             self.log_queue.put("__PROCESS_DONE__")
@@ -44,14 +44,14 @@ class ProcessRunner:
         if not self.is_running or not self.process:
             return
             
-        self.log_queue.put("\n⚠️ Stopping process group...\n")
+        self.log_queue.put("\nStopping process group...\n")
         try:
             os.killpg(os.getpgid(self.process.pid), signal.SIGINT)
         except Exception as e:
             try:
                 self.process.terminate()
             except Exception as ex:
-                self.log_queue.put(f"❌ Failed to stop: {str(ex)}\n")
+                self.log_queue.put(f"Failed to stop: {str(ex)}\n")
 
     def kill_force(self):
         """Forcefully kills the subprocess group (SIGKILL) on close."""

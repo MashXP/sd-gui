@@ -21,7 +21,7 @@ SERVER_PATH = os.path.expanduser("~/App/stable-diffusion.cpp/build/bin/sd-server
 class DesktopManager:
     def __init__(self, root):
         self.root = root
-        self.root.title("⚡ SD-CLI Desktop Manager")
+        self.root.title("SD-CLI Desktop Manager")
         self.root.geometry("1200x780")
         
         # Configure local directories
@@ -57,6 +57,7 @@ class DesktopManager:
         self.var_binary = tk.StringVar(value="sd-server")
         self.var_backend = tk.StringVar(value="llm=cpu")
         self.var_model = tk.StringVar()
+        self.var_t5xxl = tk.StringVar()
         self.var_llm = tk.StringVar()
         self.var_vae = tk.StringVar()
         self.var_width = tk.StringVar(value="768")
@@ -124,7 +125,7 @@ class DesktopManager:
                         self.scanned_models.append(rel_path)
         self.scanned_models.sort()
         
-        for combo in [self.combo_model, self.combo_llm, self.combo_vae]:
+        for combo in [self.combo_model, self.combo_t5xxl, self.combo_llm, self.combo_vae]:
             combo['values'] = [""] + self.scanned_models
 
     def load_profiles_list(self):
@@ -150,7 +151,7 @@ class DesktopManager:
         header_profile = tk.Frame(left_frame, bg=self.bg_card)
         header_profile.pack(fill=tk.X, padx=20, pady=(20, 10))
         
-        tk.Label(header_profile, text="📁 Profiles", bg=self.bg_card, fg=self.accent_blue, font=('Helvetica', 12, 'bold')).pack(side=tk.LEFT)
+        tk.Label(header_profile, text="Profiles", bg=self.bg_card, fg=self.accent_blue, font=('Helvetica', 12, 'bold')).pack(side=tk.LEFT)
         
         profile_frame = tk.Frame(left_frame, bg=self.bg_card)
         profile_frame.pack(fill=tk.X, padx=20, pady=(0, 15))
@@ -172,7 +173,7 @@ class DesktopManager:
         # Settings Title
         header_settings = tk.Frame(left_frame, bg=self.bg_card)
         header_settings.pack(fill=tk.X, padx=20, pady=(5, 10))
-        tk.Label(header_settings, text="⚙️ Parameters", bg=self.bg_card, fg=self.accent_blue, font=('Helvetica', 12, 'bold')).pack(side=tk.LEFT)
+        tk.Label(header_settings, text="Parameters", bg=self.bg_card, fg=self.accent_blue, font=('Helvetica', 12, 'bold')).pack(side=tk.LEFT)
         
         # Scrollable Settings panel
         form_canvas = tk.Canvas(left_frame, bg=self.bg_card, highlightthickness=0, bd=0)
@@ -192,7 +193,7 @@ class DesktopManager:
         row = 0
         
         # Section Header: Base Generation
-        tk.Label(scroll_frame, text="🎯 Base Generation", bg=self.bg_card, fg=self.accent_blue, font=('Helvetica', 10, 'bold')).grid(row=row, column=0, columnspan=2, sticky='w', pady=(5, 8))
+        tk.Label(scroll_frame, text="Base Generation", bg=self.bg_card, fg=self.accent_blue, font=('Helvetica', 10, 'bold')).grid(row=row, column=0, columnspan=2, sticky='w', pady=(5, 8))
         row += 1
 
         # Binary Selector
@@ -215,6 +216,14 @@ class DesktopManager:
         self.combo_model.grid(row=row, column=1, sticky='we', pady=8, padx=(10, 0))
         self.combo_model.bind("<<ComboboxSelected>>", lambda e: self.update_cmd_preview())
         self.combo_model.bind("<KeyRelease>", lambda e: self.update_cmd_preview())
+        row += 1
+        
+        # T5XXL dropdown
+        tk.Label(scroll_frame, text="Text Encoder (T5XXL)", bg=self.bg_card, fg=self.text_secondary).grid(row=row, column=0, sticky='w', pady=8)
+        self.combo_t5xxl = ttk.Combobox(scroll_frame, textvariable=self.var_t5xxl, style='TCombobox')
+        self.combo_t5xxl.grid(row=row, column=1, sticky='we', pady=8, padx=(10, 0))
+        self.combo_t5xxl.bind("<<ComboboxSelected>>", lambda e: self.update_cmd_preview())
+        self.combo_t5xxl.bind("<KeyRelease>", lambda e: self.update_cmd_preview())
         row += 1
         
         # LLM dropdown
@@ -336,7 +345,7 @@ class DesktopManager:
         row += 1
 
         # Section Header: Highres Fix & Img2Img
-        tk.Label(scroll_frame, text="✨ Highres Fix & Img2Img", bg=self.bg_card, fg=self.accent_blue, font=('Helvetica', 10, 'bold')).grid(row=row, column=0, columnspan=2, sticky='w', pady=(15, 8))
+        tk.Label(scroll_frame, text="Highres Fix & Img2Img", bg=self.bg_card, fg=self.accent_blue, font=('Helvetica', 10, 'bold')).grid(row=row, column=0, columnspan=2, sticky='w', pady=(15, 8))
         row += 1
         
         # Strength & Enable Hires
@@ -374,7 +383,7 @@ class DesktopManager:
         row += 1
 
         # Section Header: Sampler & Caching Options
-        tk.Label(scroll_frame, text="🌀 Sampler & Cache Settings", bg=self.bg_card, fg=self.accent_blue, font=('Helvetica', 10, 'bold')).grid(row=row, column=0, columnspan=2, sticky='w', pady=(15, 8))
+        tk.Label(scroll_frame, text="Sampler & Cache Settings", bg=self.bg_card, fg=self.accent_blue, font=('Helvetica', 10, 'bold')).grid(row=row, column=0, columnspan=2, sticky='w', pady=(15, 8))
         row += 1
         
         # Sampler, Scheduler
@@ -404,7 +413,7 @@ class DesktopManager:
         row += 1
 
         # Section Header: Advanced Options
-        tk.Label(scroll_frame, text="🛠️ Advanced & Performance", bg=self.bg_card, fg=self.accent_blue, font=('Helvetica', 10, 'bold')).grid(row=row, column=0, columnspan=2, sticky='w', pady=(15, 8))
+        tk.Label(scroll_frame, text="Advanced & Performance", bg=self.bg_card, fg=self.accent_blue, font=('Helvetica', 10, 'bold')).grid(row=row, column=0, columnspan=2, sticky='w', pady=(15, 8))
         row += 1
         
         # VAE Tile Size
@@ -452,7 +461,7 @@ class DesktopManager:
         scroll_frame.columnconfigure(1, weight=1)
         
         # --- RIGHT PANE: PREVIEW & LOGS ---
-        preview_label = tk.Label(right_frame, text="📋 Generated Command", bg=self.bg_card, fg=self.accent_blue, font=('Helvetica', 12, 'bold'))
+        preview_label = tk.Label(right_frame, text="Generated Command", bg=self.bg_card, fg=self.accent_blue, font=('Helvetica', 12, 'bold'))
         preview_label.pack(anchor='w', padx=20, pady=(20, 5))
         
         self.text_cmd_preview = tk.Text(right_frame, bg=self.terminal_bg, fg=self.accent_blue, insertbackground=self.accent_blue, height=4, font=('Courier', 10), bd=0, highlightthickness=1, highlightbackground=self.border_color, wrap=tk.WORD, padx=10, pady=8)
@@ -462,12 +471,12 @@ class DesktopManager:
         btn_frame = tk.Frame(right_frame, bg=self.bg_card)
         btn_frame.pack(fill=tk.X, padx=20, pady=10)
         
-        self.btn_copy = ttk.Button(btn_frame, text="📋 Copy Command", command=self.copy_command)
+        self.btn_copy = ttk.Button(btn_frame, text="Copy Command", command=self.copy_command)
         self.btn_copy.pack(side=tk.LEFT, padx=(0, 10))
         
         self.btn_start = tk.Button(
             btn_frame,
-            text="▶️ Start Process",
+            text="Start Process",
             bg=self.btn_green,
             fg="#ffffff",
             font=('Helvetica', 10, 'bold'),
@@ -483,7 +492,7 @@ class DesktopManager:
         
         self.btn_stop = tk.Button(
             btn_frame,
-            text="⏹️ Stop Process",
+            text="Stop Process",
             bg="#374151",
             fg=self.text_secondary,
             font=('Helvetica', 10, 'bold'),
@@ -510,7 +519,7 @@ class DesktopManager:
         console_title_frame = tk.Frame(right_frame, bg=self.bg_card)
         console_title_frame.pack(fill=tk.X, padx=20, pady=(15, 5))
         
-        tk.Label(console_title_frame, text="💻 Console Log", bg=self.bg_card, fg=self.accent_blue, font=('Helvetica', 12, 'bold')).pack(side=tk.LEFT)
+        tk.Label(console_title_frame, text="Console Log", bg=self.bg_card, fg=self.accent_blue, font=('Helvetica', 12, 'bold')).pack(side=tk.LEFT)
         
         btn_clear = tk.Button(
             console_title_frame,
@@ -623,16 +632,19 @@ class DesktopManager:
         
         model = self.var_model.get().strip()
         vae = self.var_vae.get().strip()
+        t5xxl = self.var_t5xxl.get().strip()
         llm = self.var_llm.get().strip()
         
         if model:
-            if not vae and not llm:
+            if not vae and not llm and not t5xxl:
                 cmd += ["-m", model]
             else:
                 cmd += ["--diffusion-model", model]
                 
         if vae:
             cmd += ["--vae", vae]
+        if t5xxl:
+            cmd += ["--t5xxl", t5xxl]
         if llm:
             cmd += ["--llm", llm]
             
@@ -777,7 +789,7 @@ class DesktopManager:
     def copy_command(self):
         cmd = self.build_command_list()
         self.copy_to_clipboard(" ".join(cmd))
-        self.show_toast("📋 Command copied to clipboard!")
+        self.show_toast("Command copied to clipboard!")
 
     def on_profile_selected(self, event):
         name = self.combo_profile.get()
@@ -791,6 +803,7 @@ class DesktopManager:
         if "BINARY" in config: self.var_binary.set(config["BINARY"])
         if "MODEL" in config: self.var_model.set(config["MODEL"])
         if "VAE" in config: self.var_vae.set(config["VAE"])
+        if "T5XXL" in config: self.var_t5xxl.set(config["T5XXL"])
         if "LLM" in config: self.var_llm.set(config["LLM"])
         if "BACKEND" in config: self.var_backend.set(config["BACKEND"])
         
@@ -854,7 +867,7 @@ class DesktopManager:
     def save_profile(self):
         name = self.entry_save_name.get().strip()
         if not name:
-            messagebox.showwarning("⚠️ Name Required", "Please enter a profile name first.")
+            messagebox.showwarning("Name Required", "Please enter a profile name first.")
             return
             
         out_val = self.var_output.get().strip()
@@ -865,6 +878,7 @@ class DesktopManager:
             "BINARY": self.var_binary.get(),
             "MODEL": self.var_model.get(),
             "VAE": self.var_vae.get(),
+            "T5XXL": self.var_t5xxl.get(),
             "LLM": self.var_llm.get(),
             "BACKEND": self.var_backend.get(),
             "PROMPT": self.entry_prompt.get("1.0", "end-1c").strip(),
@@ -905,7 +919,7 @@ class DesktopManager:
         
         self.load_profiles_list()
         self.combo_profile.set(name)
-        self.show_toast(f"💾 Profile '{name}' saved!")
+        self.show_toast(f"Profile '{name}' saved!")
 
     def clear_logs(self):
         self.text_terminal.delete("1.0", tk.END)
@@ -918,9 +932,9 @@ class DesktopManager:
             logs = f"[Logs truncated - showing last {max_len} characters]\n" + logs[-max_len:]
         self.copy_to_clipboard(logs.strip())
         if len(logs) > max_len:
-            self.show_toast("📋 Logs copied (trimmed)!")
+            self.show_toast("Logs copied (trimmed)!")
         else:
-            self.show_toast("📋 Console logs copied!")
+            self.show_toast("Console logs copied!")
 
     def show_toast(self, message, duration=1500):
         toast = tk.Toplevel(self.root)
@@ -970,11 +984,11 @@ class DesktopManager:
         binary_path = cmd[0]
         
         if not os.path.exists(binary_path):
-            messagebox.showerror("❌ Error", f"Binary not found at:\n{binary_path}\nPlease build stable-diffusion.cpp first.")
+            messagebox.showerror("Error", f"Binary not found at:\n{binary_path}\nPlease build stable-diffusion.cpp first.")
             return
             
         self.clear_logs()
-        self.text_terminal.insert(tk.END, f"🚀 Launching subprocess: {' '.join(cmd)}\n\n")
+        self.text_terminal.insert(tk.END, f"Launching subprocess: {' '.join(cmd)}\n\n")
         
         self.btn_start.configure(state=tk.DISABLED, bg="#1f2937", fg=self.text_secondary)
         self.btn_stop.configure(state=tk.NORMAL, bg=self.btn_red, fg="#ffffff", cursor="hand2")
@@ -982,7 +996,7 @@ class DesktopManager:
         # Start elapsed timer
         self.start_time = time.time()
         self.timer_running = True
-        self.label_timer.configure(text="⏱️ 0.0s", fg=self.accent_blue)
+        self.label_timer.configure(text="0.0s", fg=self.accent_blue)
         self.root.after(100, self.update_timer)
         
         # Start subprocess
@@ -1002,7 +1016,7 @@ class DesktopManager:
                     self.timer_running = False
                     if self.start_time:
                         elapsed = time.time() - self.start_time
-                        self.label_timer.configure(text=f"⏱️ Finished in {elapsed:.1f}s", fg=self.btn_green)
+                        self.label_timer.configure(text=f"Finished in {elapsed:.1f}s", fg=self.btn_green)
                 else:
                     self.text_terminal.insert(tk.END, line)
                     self.text_terminal.see(tk.END)
@@ -1013,7 +1027,7 @@ class DesktopManager:
     def update_timer(self):
         if self.runner.is_running and self.timer_running and self.start_time:
             elapsed = time.time() - self.start_time
-            self.label_timer.configure(text=f"⏱️ {elapsed:.1f}s")
+            self.label_timer.configure(text=f"{elapsed:.1f}s")
             self.root.after(100, self.update_timer)
 
     def on_close(self):
