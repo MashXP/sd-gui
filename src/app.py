@@ -55,6 +55,7 @@ class DesktopManager:
         
         # Form field variables
         self.var_binary = tk.StringVar(value="sd-server")
+        self.var_mode = tk.StringVar(value="")
         self.var_backend = tk.StringVar(value="llm=cpu")
         self.var_model = tk.StringVar()
         self.var_t5xxl = tk.StringVar()
@@ -71,9 +72,12 @@ class DesktopManager:
         self.var_max_vram = tk.StringVar(value="-0.1")
         self.var_sampler = tk.StringVar(value="euler")
         self.var_scheduler = tk.StringVar(value="discrete")
+        self.var_flow_shift = tk.StringVar(value="")
+        self.var_video_frames = tk.StringVar(value="")
         self.var_cache = tk.StringVar(value="none")
         self.var_cache_option = tk.StringVar(value="")
         self.var_output = tk.StringVar(value="output_%03d.png")
+        self.var_extra_flags = tk.StringVar(value="")
         
         # Server specific variables
         self.var_listen_ip = tk.StringVar(value="0.0.0.0")
@@ -93,6 +97,7 @@ class DesktopManager:
         
         # Boolean advanced flags
         self.var_vae_tiling = tk.BooleanVar(value=True)
+        self.var_vae_conv_direct = tk.BooleanVar(value=False)
         self.var_offload = tk.BooleanVar(value=True)
         self.var_fa = tk.BooleanVar(value=True)
         self.var_circular = tk.BooleanVar(value=False)
@@ -201,6 +206,13 @@ class DesktopManager:
         self.combo_binary = ttk.Combobox(scroll_frame, textvariable=self.var_binary, values=["sd-server", "sd-cli"], state="readonly", style='TCombobox')
         self.combo_binary.grid(row=row, column=1, sticky='we', pady=8, padx=(10, 0))
         self.combo_binary.bind("<<ComboboxSelected>>", lambda e: self.update_layout_for_binary_mode())
+        row += 1
+
+        # Mode Selector (-M)
+        tk.Label(scroll_frame, text="Generation Mode (-M)", bg=self.bg_card, fg=self.text_secondary).grid(row=row, column=0, sticky='w', pady=8)
+        combo_mode = ttk.Combobox(scroll_frame, textvariable=self.var_mode, values=["", "vid_gen", "txt2img", "img2img", "convert"], state="readonly", style='TCombobox')
+        combo_mode.grid(row=row, column=1, sticky='we', pady=8, padx=(10, 0))
+        combo_mode.bind("<<ComboboxSelected>>", lambda e: self.update_cmd_preview())
         row += 1
         
         # Backend execution
@@ -412,6 +424,24 @@ class DesktopManager:
         entry_cache_opt.bind("<KeyRelease>", lambda e: self.update_cmd_preview())
         row += 1
 
+        # Section Header: Video Generation Settings
+        tk.Label(scroll_frame, text="Video Generation Settings", bg=self.bg_card, fg=self.accent_blue, font=('Helvetica', 10, 'bold')).grid(row=row, column=0, columnspan=2, sticky='w', pady=(15, 8))
+        row += 1
+        
+        # Flow Shift & Video Frames
+        tk.Label(scroll_frame, text="Flow Shift / Video Frames", bg=self.bg_card, fg=self.text_secondary).grid(row=row, column=0, sticky='w', pady=8)
+        vid_frame = tk.Frame(scroll_frame, bg=self.bg_card)
+        vid_frame.grid(row=row, column=1, sticky='we', pady=8, padx=(10, 0))
+        
+        entry_flow = styles.create_custom_entry(vid_frame, textvariable=self.var_flow_shift, width=7)
+        entry_flow.pack(side=tk.LEFT, padx=(0, 10), ipady=3)
+        entry_flow.bind("<KeyRelease>", lambda e: self.update_cmd_preview())
+        
+        entry_vframes = styles.create_custom_entry(vid_frame, textvariable=self.var_video_frames, width=10)
+        entry_vframes.pack(side=tk.LEFT, ipady=3)
+        entry_vframes.bind("<KeyRelease>", lambda e: self.update_cmd_preview())
+        row += 1
+
         # Section Header: Advanced Options
         tk.Label(scroll_frame, text="Advanced & Performance", bg=self.bg_card, fg=self.accent_blue, font=('Helvetica', 10, 'bold')).grid(row=row, column=0, columnspan=2, sticky='w', pady=(15, 8))
         row += 1
@@ -437,6 +467,13 @@ class DesktopManager:
         entry_skip.bind("<KeyRelease>", lambda e: self.update_cmd_preview())
         row += 1
 
+        # Extra CLI Flags
+        tk.Label(scroll_frame, text="Extra CLI Flags", bg=self.bg_card, fg=self.text_secondary).grid(row=row, column=0, sticky='w', pady=8)
+        entry_extra = styles.create_custom_entry(scroll_frame, textvariable=self.var_extra_flags)
+        entry_extra.grid(row=row, column=1, sticky='we', pady=8, padx=(10, 0), ipady=3)
+        entry_extra.bind("<KeyRelease>", lambda e: self.update_cmd_preview())
+        row += 1
+
         # Boolean Toggles Group
         tk.Label(scroll_frame, text="Performance Flags", bg=self.bg_card, fg=self.text_secondary).grid(row=row, column=0, sticky='nw', pady=10)
         chk_frame = tk.Frame(scroll_frame, bg=self.bg_card)
@@ -444,6 +481,9 @@ class DesktopManager:
         
         self.chk_vae = tk.Checkbutton(chk_frame, text="VAE Tiling", variable=self.var_vae_tiling, bg=self.bg_card, fg=self.text_primary, selectcolor=self.bg_main, activebackground=self.bg_card, activeforeground=self.text_primary, font=('Helvetica', 10), command=self.update_cmd_preview)
         self.chk_vae.pack(anchor='w', pady=2)
+
+        self.chk_vae_conv = tk.Checkbutton(chk_frame, text="VAE Conv Direct", variable=self.var_vae_conv_direct, bg=self.bg_card, fg=self.text_primary, selectcolor=self.bg_main, activebackground=self.bg_card, activeforeground=self.text_primary, font=('Helvetica', 10), command=self.update_cmd_preview)
+        self.chk_vae_conv.pack(anchor='w', pady=2)
         
         self.chk_offload = tk.Checkbutton(chk_frame, text="Offload to CPU", variable=self.var_offload, bg=self.bg_card, fg=self.text_primary, selectcolor=self.bg_main, activebackground=self.bg_card, activeforeground=self.text_primary, font=('Helvetica', 10), command=self.update_cmd_preview)
         self.chk_offload.pack(anchor='w', pady=2)
@@ -630,6 +670,10 @@ class DesktopManager:
         
         cmd = [binary_path]
         
+        mode = self.var_mode.get().strip()
+        if mode and binary == "sd-cli":
+            cmd += ["-M", mode]
+            
         model = self.var_model.get().strip()
         vae = self.var_vae.get().strip()
         t5xxl = self.var_t5xxl.get().strip()
@@ -705,6 +749,14 @@ class DesktopManager:
         sched = self.var_scheduler.get()
         if sched:
             cmd += ["--scheduler", sched]
+
+        flow_shift = self.var_flow_shift.get().strip()
+        if flow_shift:
+            cmd += ["--flow-shift", flow_shift]
+
+        video_frames = self.var_video_frames.get().strip()
+        if video_frames:
+            cmd += ["--video-frames", video_frames]
             
         cache = self.var_cache.get()
         if cache != "none":
@@ -747,6 +799,8 @@ class DesktopManager:
             
         if self.var_vae_tiling.get():
             cmd += ["--vae-tiling"]
+        if self.var_vae_conv_direct.get():
+            cmd += ["--vae-conv-direct"]
         if self.var_offload.get():
             cmd += ["--offload-to-cpu"]
         if self.var_fa.get():
@@ -756,6 +810,14 @@ class DesktopManager:
         if self.var_disable_metadata.get():
             cmd += ["--disable-image-metadata"]
             
+        extra_flags = self.var_extra_flags.get().strip()
+        if extra_flags:
+            import shlex
+            try:
+                cmd += shlex.split(extra_flags)
+            except Exception:
+                cmd += extra_flags.split()
+
         if binary == "sd-cli":
             out = self.var_output.get().strip()
             if out:
@@ -801,6 +863,7 @@ class DesktopManager:
         
         # Fill inputs
         if "BINARY" in config: self.var_binary.set(config["BINARY"])
+        if "MODE" in config: self.var_mode.set(config["MODE"])
         if "MODEL" in config: self.var_model.set(config["MODEL"])
         if "VAE" in config: self.var_vae.set(config["VAE"])
         if "T5XXL" in config: self.var_t5xxl.set(config["T5XXL"])
@@ -830,8 +893,11 @@ class DesktopManager:
         if "MAX_VRAM" in config: self.var_max_vram.set(config["MAX_VRAM"])
         if "SAMPLING_METHOD" in config: self.var_sampler.set(config["SAMPLING_METHOD"])
         if "SCHEDULER" in config: self.var_scheduler.set(config["SCHEDULER"])
+        if "FLOW_SHIFT" in config: self.var_flow_shift.set(config["FLOW_SHIFT"])
+        if "VIDEO_FRAMES" in config: self.var_video_frames.set(config["VIDEO_FRAMES"])
         if "CACHE_MODE" in config: self.var_cache.set(config["CACHE_MODE"])
         if "CACHE_OPTION" in config: self.var_cache_option.set(config["CACHE_OPTION"])
+        if "EXTRA_FLAGS" in config: self.var_extra_flags.set(config["EXTRA_FLAGS"])
         
         if "STRENGTH" in config: self.var_strength.set(config["STRENGTH"])
         if "HIRES" in config: self.var_hires.set(config["HIRES"].lower() == "true")
@@ -853,6 +919,7 @@ class DesktopManager:
             self.var_output.set(out)
         
         if "VAE_TILING" in config: self.var_vae_tiling.set(config["VAE_TILING"].lower() == "true")
+        if "VAE_CONV_DIRECT" in config: self.var_vae_conv_direct.set(config["VAE_CONV_DIRECT"].lower() == "true")
         if "OFFLOAD_TO_CPU" in config: self.var_offload.set(config["OFFLOAD_TO_CPU"].lower() == "true")
         if "DIFFUSION_FA" in config: self.var_fa.set(config["DIFFUSION_FA"].lower() == "true")
         
@@ -876,6 +943,7 @@ class DesktopManager:
 
         config = {
             "BINARY": self.var_binary.get(),
+            "MODE": self.var_mode.get().strip(),
             "MODEL": self.var_model.get(),
             "VAE": self.var_vae.get(),
             "T5XXL": self.var_t5xxl.get(),
@@ -894,6 +962,8 @@ class DesktopManager:
             "MAX_VRAM": self.var_max_vram.get(),
             "SAMPLING_METHOD": self.var_sampler.get(),
             "SCHEDULER": self.var_scheduler.get(),
+            "FLOW_SHIFT": self.var_flow_shift.get().strip(),
+            "VIDEO_FRAMES": self.var_video_frames.get().strip(),
             "CACHE_MODE": self.var_cache.get(),
             "CACHE_OPTION": self.var_cache_option.get().strip(),
             "STRENGTH": self.var_strength.get().strip(),
@@ -908,10 +978,12 @@ class DesktopManager:
             "DISABLE_IMAGE_METADATA": str(self.var_disable_metadata.get()).lower(),
             "OUTPUT": out_val,
             "VAE_TILING": str(self.var_vae_tiling.get()).lower(),
+            "VAE_CONV_DIRECT": str(self.var_vae_conv_direct.get()).lower(),
             "OFFLOAD_TO_CPU": str(self.var_offload.get()).lower(),
             "DIFFUSION_FA": str(self.var_fa.get()).lower(),
             "LISTEN_IP": self.var_listen_ip.get().strip(),
             "LISTEN_PORT": self.var_listen_port.get().strip(),
+            "EXTRA_FLAGS": self.var_extra_flags.get().strip(),
         }
         
         profile_path = os.path.join(PROFILES_DIR, f"{name}.env")
