@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.1.0] - 2026-07-29
+## [1.1.0] - 2026-07-30
 
 ### Added
 - **Modular UI tab architecture**: Monolithic `app.py` split into dedicated tab modules under `src/ui/`:
@@ -63,6 +63,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **History drag-select**: Treeview `selectmode` changed from `"none"` to `"extended"` to allow native click-drag row selection.
 - **Shift+Click anchor**: Last clicked row index is now tracked unconditionally (not only on checkbox column), fixing Shift+click range selection after clicking other columns.
 - **Checkbox column width**: Increased from 30px to 50px so the glyph is actually visible.
+- **Ctrl+V paste on X11**: Custom paste handler deletes selected text before inserting clipboard content, working around Tk's intentional skip of selection deletion on X11.
+- **Ctrl+A select-all**: Stale `tk.SEL` ranges are now cleared (`tag_remove`) before selecting all, preventing duplicate highlights.
+- **Prompt scrollbar**: Prompt and negative-prompt text widgets now have a vertical scrollbar that only activates when content overflows; mousewheel scrolls the text widget only while hovering over it, letting the parent tab scroll normally otherwise.
 
 ## [1.0.0] - 2026-07-15
 

@@ -177,16 +177,32 @@ class GeneratorTab:
         row += 1
         
         tk.Label(scroll_frame, text="Prompt", bg=self.bg_card, fg=self.text_secondary).grid(row=row, column=0, sticky='nw', pady=6)
-        self.entry_prompt = styles.create_custom_text(scroll_frame, height=3)
-        self.entry_prompt.grid(row=row, column=1, sticky='we', pady=6, padx=(10, 0))
+        prompt_frame = tk.Frame(scroll_frame, bg=self.bg_card)
+        prompt_frame.grid(row=row, column=1, sticky='we', pady=6, padx=(10, 0))
+        prompt_frame.columnconfigure(0, weight=1)
+        self.entry_prompt = styles.create_custom_text(prompt_frame, height=3)
+        self.entry_prompt.grid(row=0, column=0, sticky='nsew')
+        prompt_scroll = tk.Scrollbar(prompt_frame, orient="vertical", command=self.entry_prompt.yview)
+        prompt_scroll.grid(row=0, column=1, sticky='ns')
+        self.entry_prompt.configure(yscrollcommand=prompt_scroll.set)
         self.entry_prompt.bind("<KeyRelease>", self.on_prompt_change)
+        for seq in ("<Button-4>", "<Button-5>", "<MouseWheel>"):
+            self.entry_prompt.bind(seq, self._scroll_text_widget, add="+")
         row += 1
         
         self.label_neg_prompt = tk.Label(scroll_frame, text="Negative Prompt", bg=self.bg_card, fg=self.text_secondary)
         self.label_neg_prompt.grid(row=row, column=0, sticky='nw', pady=6)
-        self.entry_neg_prompt = styles.create_custom_text(scroll_frame, height=2)
-        self.entry_neg_prompt.grid(row=row, column=1, sticky='we', pady=6, padx=(10, 0))
+        neg_frame = tk.Frame(scroll_frame, bg=self.bg_card)
+        neg_frame.grid(row=row, column=1, sticky='we', pady=6, padx=(10, 0))
+        neg_frame.columnconfigure(0, weight=1)
+        self.entry_neg_prompt = styles.create_custom_text(neg_frame, height=2)
+        self.entry_neg_prompt.grid(row=0, column=0, sticky='nsew')
+        neg_scroll = tk.Scrollbar(neg_frame, orient="vertical", command=self.entry_neg_prompt.yview)
+        neg_scroll.grid(row=0, column=1, sticky='ns')
+        self.entry_neg_prompt.configure(yscrollcommand=neg_scroll.set)
         self.entry_neg_prompt.bind("<KeyRelease>", self.on_neg_prompt_change)
+        for seq in ("<Button-4>", "<Button-5>", "<MouseWheel>"):
+            self.entry_neg_prompt.bind(seq, self._scroll_text_widget, add="+")
         row += 1
         
         tk.Label(scroll_frame, text="Image Size (W / H)", bg=self.bg_card, fg=self.text_secondary).grid(row=row, column=0, sticky='w', pady=6)
@@ -690,6 +706,13 @@ class GeneratorTab:
         cmd_string = " ".join(preview_cmd)
         self.text_cmd_preview.delete("1.0", tk.END)
         self.text_cmd_preview.insert("1.0", cmd_string)
+
+    def _scroll_text_widget(self, event):
+        if event.num == 4 or (hasattr(event, 'delta') and event.delta > 0):
+            event.widget.yview_scroll(-1, "units")
+        else:
+            event.widget.yview_scroll(1, "units")
+        return "break"
 
     def on_random_seed_toggle(self):
         if self.app.var_random_seed.get():
