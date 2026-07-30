@@ -1,5 +1,6 @@
 import os
 import sys
+import re
 import time
 import subprocess
 import queue
@@ -38,7 +39,7 @@ class DesktopManager:
             self.root.attributes('-type', 'normal')
         except Exception:
             pass
-        
+
         # Configure local directories
         os.makedirs(PROFILES_DIR, exist_ok=True)
         os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -68,6 +69,9 @@ class DesktopManager:
         self.start_time = None
         self.timer_running = False
         
+        # History recording toggle
+        self.var_record_history = tk.BooleanVar(value=True)
+
         # Form field variables
         self.var_binary = tk.StringVar(value="sd-cli")
         self.var_mode = tk.StringVar(value="img_gen")
@@ -82,6 +86,7 @@ class DesktopManager:
         self.var_cfg = tk.StringVar(value="6.0")
         self.var_guidance = tk.StringVar(value="")
         self.var_seed = tk.StringVar(value="-1")
+        self.var_random_seed = tk.BooleanVar(value=True)
         self.var_batch_count = tk.StringVar(value="1")
         self.var_output_begin_idx = tk.StringVar(value="")
         self.var_max_vram = tk.StringVar(value="-0.1")
@@ -498,24 +503,23 @@ class DesktopManager:
         toast = tk.Toplevel(self.root)
         toast.overrideredirect(True)
         toast.configure(bg=self.bg_input)
-        
-        self.root.update_idletasks()
+
+        lbl = tk.Label(toast, text=message, bg=self.bg_input, fg=self.accent_blue, font=styles.FONT_TITLE, padx=15, pady=8)
+        lbl.pack()
+
+        self.root.update()
+        toast.update_idletasks()
         rx = self.root.winfo_rootx()
         ry = self.root.winfo_rooty()
         rw = self.root.winfo_width()
         rh = self.root.winfo_height()
-        
-        lbl = tk.Label(toast, text=message, bg=self.bg_input, fg=self.accent_blue, font=('Helvetica', 10, 'bold'), padx=15, pady=8)
-        lbl.pack()
-        
-        toast.update_idletasks()
-        tw = toast.winfo_width()
-        th = toast.winfo_height()
-        
+        tw = toast.winfo_reqwidth()
+        th = toast.winfo_reqheight()
+
         x = rx + (rw // 2) - (tw // 2)
-        y = ry + rh - th - 30
+        y = ry + rh - th - 40
         toast.geometry(f"+{x}+{y}")
-        
+
         self.root.after(duration, toast.destroy)
 
     def copy_to_clipboard(self, text):
@@ -582,6 +586,14 @@ class DesktopManager:
     def stop_process(self):
         self.runner.stop()
 
+    def _extract_seed_from_terminal(self):
+        text = self.generator_tab.text_terminal.get("1.0", "end-1c")
+        for pat in (r'seed[:\s]*(\d+)', r'using seed[:\s]*(\d+)', r'seed\s*=\s*(\d+)'):
+            m = re.search(pat, text, re.IGNORECASE)
+            if m:
+                return m.group(1)
+        return self.var_seed.get().strip() or "-1"
+
     def poll_log_queue(self):
         try:
             while True:
@@ -602,26 +614,42 @@ class DesktopManager:
                         if not out_file.startswith("output/"):
                             out_file = f"output/{out_file}"
                         
-                        try:
-                            self.db.add_entry(
-                                model=self.var_model.get().strip(),
-                                prompt=prompt,
-                                negative_prompt=neg_p,
-                                width=int(self.var_width.get()),
-                                height=int(self.var_height.get()),
-                                seed=int(self.var_seed.get()),
-                                output_path=out_file,
-                                full_cmd=cmd_str
-                            )
-                            self.history_tab.refresh_history_table()
-                            self.gallery_tab.refresh_gallery()
-                            self.generator_tab.update_latest_output_preview(out_file)
+                        actual_seed = self._extract_seed_from_terminal()
+                        
+                        mode = self.var_mode.get().strip() or None
+                        steps = self.var_steps.get().strip()
+                        steps = int(steps) if steps.isdigit() else None
+                        cfg = self.var_cfg.get().strip()
+                        cfg = float(cfg) if cfg else None
+                        sampler = self.var_sampler.get().strip() or None
+                        
+                        if self.var_record_history.get():
                             try:
-                                self.generator_tab.right_notebook.select(0)
-                            except Exception:
-                                pass
-                        except Exception as e:
-                            print(f"Error logging run to database: {e}", file=sys.stderr)
+                                self.db.add_entry(
+                                    model=self.var_model.get().strip(),
+                                    prompt=prompt,
+                                    negative_prompt=neg_p,
+                                    width=int(self.var_width.get()),
+                                    height=int(self.var_height.get()),
+                                    seed=actual_seed,
+                                    output_path=out_file,
+                                    full_cmd=cmd_str,
+                                    generation_time=round(elapsed, 2),
+                                    mode=mode,
+                                    steps=steps,
+                                    cfg_scale=cfg,
+                                    sampler=sampler,
+                                )
+                                self.history_tab.refresh_history_table()
+                            except Exception as e:
+                                print(f"Error logging run to database: {e}", file=sys.stderr)
+
+                        self.gallery_tab.refresh_gallery()
+                        self.generator_tab.update_latest_output_preview(out_file)
+                        try:
+                            self.generator_tab.right_notebook.select(0)
+                        except Exception:
+                            pass
                 else:
                     self.generator_tab.text_terminal.insert(tk.END, line)
                     try:

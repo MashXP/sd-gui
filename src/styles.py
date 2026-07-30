@@ -15,16 +15,53 @@ BTN_RED = "#f43f5e"          # Danger actions
 TERMINAL_BG = "#030712"      # Monospace terminal background
 TERMINAL_FG = "#40f063"      # Cool green terminal text
 
-# Modern typography font stacks
-FONT_SANS = ("Inter", "Roboto", "Cantarell", "Ubuntu", "Noto Sans", "Liberation Sans", "DejaVu Sans", "sans-serif")
-FONT_MONO = ("JetBrains Mono", "Fira Code", "Fira Mono", "Hack", "DejaVu Sans Mono", "Liberation Mono", "monospace")
+# Preferred font families (in order of preference)
+FONT_SANS_LIST = ["Inter", "Roboto", "Cantarell", "Ubuntu", "Noto Sans", "Liberation Sans", "DejaVu Sans", "sans-serif"]
+FONT_MONO_LIST = ["JetBrains Mono", "Fira Code", "Fira Mono", "Hack", "DejaVu Sans Mono", "Liberation Mono", "monospace"]
 
-FONT_MAIN = (FONT_SANS, 10)
-FONT_BOLD = (FONT_SANS, 10, 'bold')
-FONT_TITLE = (FONT_SANS, 11, 'bold')
-FONT_HEADER = (FONT_SANS, 12, 'bold')
-FONT_SMALL = (FONT_SANS, 9)
-FONT_CODE = (FONT_MONO, 9)
+FONT_SANS = "sans-serif"
+FONT_MONO = "monospace"
+
+FONT_MAIN = (FONT_SANS, 11)
+FONT_BOLD = (FONT_SANS, 11, 'bold')
+FONT_TITLE = (FONT_SANS, 12, 'bold')
+FONT_HEADER = (FONT_SANS, 13, 'bold')
+FONT_SMALL = (FONT_SANS, 10)
+FONT_CODE = (FONT_MONO, 10)
+
+_fonts_initialized = False
+
+def init_fonts():
+    global FONT_SANS, FONT_MONO, FONT_MAIN, FONT_BOLD, FONT_TITLE, FONT_HEADER, FONT_SMALL, FONT_CODE, _fonts_initialized
+    if _fonts_initialized:
+        return
+
+    # Use fc-list — pure filesystem, no X11 requests.
+    try:
+        import subprocess
+        result = subprocess.run(
+            ['fc-list', '--format=%{family[0]}\n'],
+            capture_output=True, text=True, timeout=3
+        )
+        available = {f.strip().lower() for f in result.stdout.splitlines() if f.strip()}
+        for f in FONT_SANS_LIST:
+            if f.lower() in available:
+                FONT_SANS = f
+                break
+        for f in FONT_MONO_LIST:
+            if f.lower() in available:
+                FONT_MONO = f
+                break
+    except Exception:
+        pass
+
+    FONT_MAIN = (FONT_SANS, 11)
+    FONT_BOLD = (FONT_SANS, 11, 'bold')
+    FONT_TITLE = (FONT_SANS, 12, 'bold')
+    FONT_HEADER = (FONT_SANS, 13, 'bold')
+    FONT_SMALL = (FONT_SANS, 10)
+    FONT_CODE = (FONT_MONO, 10)
+    _fonts_initialized = True
 
 def setup_combobox_scroll_fix(root):
     """Prevents comboboxes from changing values on mouse wheel scroll."""
@@ -57,6 +94,7 @@ def enable_mousewheel_scrolling(container, canvas):
 
 def apply_styles(root, style):
     """Enables and configures the Ttk clam theme and Listbox drop-down options."""
+    init_fonts()
     style.theme_use('clam')
     setup_combobox_scroll_fix(root)
     
@@ -148,7 +186,7 @@ def apply_styles(root, style):
         foreground=TEXT_PRIMARY,
         fieldbackground=BG_INPUT,
         bordercolor=BORDER_COLOR,
-        rowheight=28,
+        rowheight=30,
         font=FONT_MAIN
     )
     style.map('Treeview',

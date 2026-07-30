@@ -127,7 +127,7 @@ class GeneratorTab:
         styles.enable_mousewheel_scrolling(left_frame, self.form_canvas)
         
         row = 0
-        tk.Label(scroll_frame, text="Base Generation", bg=self.bg_card, fg=self.accent_blue, font=('Helvetica', 10, 'bold')).grid(row=row, column=0, columnspan=2, sticky='w', pady=(5, 6))
+        tk.Label(scroll_frame, text="Base Generation", bg=self.bg_card, fg=self.accent_blue, font=styles.FONT_BOLD).grid(row=row, column=0, columnspan=2, sticky='w', pady=(5, 6))
         row += 1
 
         tk.Label(scroll_frame, text="Binary Mode", bg=self.bg_card, fg=self.text_secondary).grid(row=row, column=0, sticky='w', pady=6)
@@ -219,10 +219,18 @@ class GeneratorTab:
         seed_frame = tk.Frame(scroll_frame, bg=self.bg_card)
         seed_frame.grid(row=row, column=1, sticky='we', pady=6, padx=(10, 0))
         
-        entry_seed = styles.create_custom_entry(seed_frame, textvariable=self.var_seed, width=10)
-        entry_seed.pack(side=tk.LEFT, padx=(0, 8), ipady=3)
-        entry_seed.bind("<KeyRelease>", lambda e: self.update_cmd_preview())
+        self.entry_seed = styles.create_custom_entry(seed_frame, textvariable=self.var_seed, width=10)
+        self.entry_seed.pack(side=tk.LEFT, padx=(0, 8), ipady=3)
+        self.entry_seed.bind("<KeyRelease>", lambda e: self.update_cmd_preview())
         
+        self.chk_random_seed = tk.Checkbutton(
+            seed_frame, text="Random", variable=self.app.var_random_seed,
+            bg=self.bg_card, fg=self.text_primary, selectcolor=self.bg_main,
+            activebackground=self.bg_card, activeforeground=self.text_primary,
+            font=styles.FONT_MAIN, command=self.on_random_seed_toggle
+        )
+        self.chk_random_seed.pack(side=tk.LEFT, padx=(0, 10))
+
         entry_vram = styles.create_custom_entry(seed_frame, textvariable=self.var_max_vram, width=8)
         entry_vram.pack(side=tk.LEFT, ipady=3)
         entry_vram.bind("<KeyRelease>", lambda e: self.update_cmd_preview())
@@ -295,7 +303,7 @@ class GeneratorTab:
         entry_strength.pack(side=tk.LEFT, padx=(0, 10), ipady=3)
         entry_strength.bind("<KeyRelease>", lambda e: self.update_cmd_preview())
         
-        self.chk_hires = tk.Checkbutton(hires_act_frame, text="Enable Hires Fix", variable=self.var_hires, bg=self.bg_card, fg=self.text_primary, selectcolor=self.bg_main, activebackground=self.bg_card, activeforeground=self.text_primary, font=('Helvetica', 10), command=self.update_cmd_preview)
+        self.chk_hires = tk.Checkbutton(hires_act_frame, text="Enable Hires Fix", variable=self.var_hires, bg=self.bg_card, fg=self.text_primary, selectcolor=self.bg_main, activebackground=self.bg_card, activeforeground=self.text_primary, font=styles.FONT_MAIN, command=self.update_cmd_preview)
         self.chk_hires.pack(side=tk.LEFT)
         r_sub += 1
 
@@ -402,22 +410,22 @@ class GeneratorTab:
         chk_frame = tk.Frame(f_adv, bg=self.bg_card)
         chk_frame.grid(row=r_sub, column=1, sticky='we', pady=6, padx=(8, 0))
         
-        self.chk_vae = tk.Checkbutton(chk_frame, text="VAE Tiling", variable=self.var_vae_tiling, bg=self.bg_card, fg=self.text_primary, selectcolor=self.bg_main, activebackground=self.bg_card, activeforeground=self.text_primary, font=('Helvetica', 10), command=self.update_cmd_preview)
+        self.chk_vae = tk.Checkbutton(chk_frame, text="VAE Tiling", variable=self.var_vae_tiling, bg=self.bg_card, fg=self.text_primary, selectcolor=self.bg_main, activebackground=self.bg_card, activeforeground=self.text_primary, font=styles.FONT_MAIN, command=self.update_cmd_preview)
         self.chk_vae.pack(anchor='w', pady=2)
 
-        self.chk_vae_conv = tk.Checkbutton(chk_frame, text="VAE Conv Direct", variable=self.var_vae_conv_direct, bg=self.bg_card, fg=self.text_primary, selectcolor=self.bg_main, activebackground=self.bg_card, activeforeground=self.text_primary, font=('Helvetica', 10), command=self.update_cmd_preview)
+        self.chk_vae_conv = tk.Checkbutton(chk_frame, text="VAE Conv Direct", variable=self.var_vae_conv_direct, bg=self.bg_card, fg=self.text_primary, selectcolor=self.bg_main, activebackground=self.bg_card, activeforeground=self.text_primary, font=styles.FONT_MAIN, command=self.update_cmd_preview)
         self.chk_vae_conv.pack(anchor='w', pady=2)
         
-        self.chk_offload = tk.Checkbutton(chk_frame, text="Offload to CPU", variable=self.var_offload, bg=self.bg_card, fg=self.text_primary, selectcolor=self.bg_main, activebackground=self.bg_card, activeforeground=self.text_primary, font=('Helvetica', 10), command=self.update_cmd_preview)
+        self.chk_offload = tk.Checkbutton(chk_frame, text="Offload to CPU", variable=self.var_offload, bg=self.bg_card, fg=self.text_primary, selectcolor=self.bg_main, activebackground=self.bg_card, activeforeground=self.text_primary, font=styles.FONT_MAIN, command=self.update_cmd_preview)
         self.chk_offload.pack(anchor='w', pady=2)
         
-        self.chk_fa = tk.Checkbutton(chk_frame, text="Diffusion FA", variable=self.var_fa, bg=self.bg_card, fg=self.text_primary, selectcolor=self.bg_main, activebackground=self.bg_card, activeforeground=self.text_primary, font=('Helvetica', 10), command=self.update_cmd_preview)
+        self.chk_fa = tk.Checkbutton(chk_frame, text="Diffusion FA", variable=self.var_fa, bg=self.bg_card, fg=self.text_primary, selectcolor=self.bg_main, activebackground=self.bg_card, activeforeground=self.text_primary, font=styles.FONT_MAIN, command=self.update_cmd_preview)
         self.chk_fa.pack(anchor='w', pady=2)
 
-        self.chk_circular = tk.Checkbutton(chk_frame, text="Circular Padding", variable=self.var_circular, bg=self.bg_card, fg=self.text_primary, selectcolor=self.bg_main, activebackground=self.bg_card, activeforeground=self.text_primary, font=('Helvetica', 10), command=self.update_cmd_preview)
+        self.chk_circular = tk.Checkbutton(chk_frame, text="Circular Padding", variable=self.var_circular, bg=self.bg_card, fg=self.text_primary, selectcolor=self.bg_main, activebackground=self.bg_card, activeforeground=self.text_primary, font=styles.FONT_MAIN, command=self.update_cmd_preview)
         self.chk_circular.pack(anchor='w', pady=2)
         
-        self.chk_metadata = tk.Checkbutton(chk_frame, text="Disable Metadata", variable=self.var_disable_metadata, bg=self.bg_card, fg=self.text_primary, selectcolor=self.bg_main, activebackground=self.bg_card, activeforeground=self.text_primary, font=('Helvetica', 10), command=self.update_cmd_preview)
+        self.chk_metadata = tk.Checkbutton(chk_frame, text="Disable Metadata", variable=self.var_disable_metadata, bg=self.bg_card, fg=self.text_primary, selectcolor=self.bg_main, activebackground=self.bg_card, activeforeground=self.text_primary, font=styles.FONT_MAIN, command=self.update_cmd_preview)
         self.chk_metadata.pack(anchor='w', pady=2)
         r_sub += 1
         
@@ -549,6 +557,9 @@ class GeneratorTab:
         )
         self.text_terminal.pack(fill=tk.BOTH, expand=True, padx=5, pady=(0, 5))
 
+        # Apply initial random seed toggle state
+        self.on_random_seed_toggle()
+
         # Select Output (Tab 0) as default
         self.right_notebook.select(0)
 
@@ -679,6 +690,14 @@ class GeneratorTab:
         cmd_string = " ".join(preview_cmd)
         self.text_cmd_preview.delete("1.0", tk.END)
         self.text_cmd_preview.insert("1.0", cmd_string)
+
+    def on_random_seed_toggle(self):
+        if self.app.var_random_seed.get():
+            self.var_seed.set("-1")
+            self.entry_seed.config(state=tk.DISABLED, fg=self.text_secondary)
+        else:
+            self.entry_seed.config(state=tk.NORMAL, fg=self.text_primary)
+        self.update_cmd_preview()
 
     def on_prompt_change(self, event=None):
         self.update_cmd_preview()
