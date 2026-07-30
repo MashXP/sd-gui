@@ -519,18 +519,41 @@ class DesktopManager:
         self.root.after(duration, toast.destroy)
 
     def copy_to_clipboard(self, text):
-        self.root.clipboard_clear()
-        self.root.clipboard_append(text)
+        if not text:
+            return
         try:
-            p = subprocess.Popen(['xclip', '-selection', 'clipboard'], stdin=subprocess.PIPE, text=True)
-            p.communicate(input=text)
+            # Use wl-copy/xclip for actual Wayland/X11 clipboard integration.
+            # start_new_session=True isolates wl-copy in its own process group so
+            # it doesn't receive or send SIGTERM to/from Antigravity's ptyHost.
+            if os.environ.get("WAYLAND_DISPLAY"):
+                proc = subprocess.Popen(
+                    ['wl-copy'],
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    text=True,
+                    start_new_session=True
+                )
+                proc.stdin.write(text)
+                proc.stdin.close()
+            elif os.environ.get("DISPLAY"):
+                proc = subprocess.Popen(
+                    ['xclip', '-selection', 'clipboard'],
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    text=True,
+                    start_new_session=True
+                )
+                proc.stdin.write(text)
+                proc.stdin.close()
         except Exception:
-            pass
-        try:
-            p = subprocess.Popen(['wl-copy'], stdin=subprocess.PIPE, text=True)
-            p.communicate(input=text)
-        except Exception:
-            pass
+            # Fallback to Tkinter clipboard (X11 only, but better than nothing)
+            try:
+                self.root.clipboard_append(text)
+                self.root.update_idletasks()
+            except Exception:
+                pass
 
     def start_process(self):
         if self.runner.is_running:
@@ -592,10 +615,21 @@ class DesktopManager:
                             )
                             self.history_tab.refresh_history_table()
                             self.gallery_tab.refresh_gallery()
+                            self.generator_tab.update_latest_output_preview(out_file)
+                            try:
+                                self.generator_tab.right_notebook.select(0)
+                            except Exception:
+                                pass
                         except Exception as e:
                             print(f"Error logging run to database: {e}", file=sys.stderr)
                 else:
                     self.generator_tab.text_terminal.insert(tk.END, line)
+                    try:
+                        num_lines = int(self.generator_tab.text_terminal.index("end-1c").split(".")[0])
+                        if num_lines > 500:
+                            self.generator_tab.text_terminal.delete("1.0", f"{num_lines - 400}.0")
+                    except Exception:
+                        pass
                     self.generator_tab.text_terminal.see(tk.END)
         except queue.Empty:
             pass

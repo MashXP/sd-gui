@@ -1,6 +1,10 @@
 import os
+import sys
+import glob
+import subprocess
 import tkinter as tk
 from tkinter import ttk, filedialog
+from PIL import Image, ImageTk
 import styles
 from ui.widgets import CollapsibleFrame
 
@@ -20,6 +24,9 @@ class GeneratorTab:
         self.btn_red = styles.BTN_RED
         self.terminal_bg = styles.TERMINAL_BG
         self.terminal_fg = styles.TERMINAL_FG
+
+        self.latest_photo = None
+        self.latest_image_path = None
 
         # Form Field Variables (delegated from app)
         self.var_binary = app.var_binary
@@ -116,6 +123,8 @@ class GeneratorTab:
         
         self.form_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(15, 5), pady=(0, 15))
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y, padx=(0, 8), pady=(0, 15))
+        
+        styles.enable_mousewheel_scrolling(left_frame, self.form_canvas)
         
         row = 0
         tk.Label(scroll_frame, text="Base Generation", bg=self.bg_card, fg=self.accent_blue, font=('Helvetica', 10, 'bold')).grid(row=row, column=0, columnspan=2, sticky='w', pady=(5, 6))
@@ -418,7 +427,7 @@ class GeneratorTab:
         preview_label = tk.Label(right_frame, text="Generated Command", bg=self.bg_card, fg=self.accent_blue, font=styles.FONT_TITLE)
         preview_label.pack(anchor='w', padx=15, pady=(15, 4))
         
-        self.text_cmd_preview = tk.Text(right_frame, bg=self.terminal_bg, fg=self.accent_blue, insertbackground=self.accent_blue, height=4, font=styles.FONT_CODE, bd=0, highlightthickness=1, highlightbackground=self.border_color, wrap=tk.WORD, padx=8, pady=6)
+        self.text_cmd_preview = tk.Text(right_frame, bg=self.terminal_bg, fg=self.accent_blue, insertbackground=self.accent_blue, insertwidth=2, height=4, font=styles.FONT_CODE, bd=0, highlightthickness=1, highlightbackground=self.border_color, wrap=tk.WORD, padx=8, pady=6)
         self.text_cmd_preview.pack(fill=tk.X, padx=15, pady=4)
         
         actions_frame = tk.Frame(right_frame, bg=self.bg_card)
@@ -460,22 +469,76 @@ class GeneratorTab:
         self.label_timer = tk.Label(actions_frame, text="Ready", bg=self.bg_card, fg=self.text_secondary, font=styles.FONT_BOLD)
         self.label_timer.pack(side=tk.LEFT)
         
-        console_header = tk.Frame(right_frame, bg=self.bg_card)
-        console_header.pack(fill=tk.X, padx=15, pady=(5, 5))
+        # --- SUB-NOTEBOOK: OUTPUT & TERMINAL LOGS ---
+        self.right_notebook = ttk.Notebook(right_frame)
+        self.right_notebook.pack(fill=tk.BOTH, expand=True, padx=15, pady=(5, 15))
+
+        # Sub-tab 1: Output Preview (Default Tab 0)
+        self.sub_tab_preview = tk.Frame(self.right_notebook, bg=self.bg_card)
+        self.right_notebook.add(self.sub_tab_preview, text="Output")
+
+        prev_header = tk.Frame(self.sub_tab_preview, bg=self.bg_card)
+        prev_header.pack(fill=tk.X, padx=4, pady=(4, 2))
+
+        self.label_latest_title = tk.Label(prev_header, text="Generated Output", bg=self.bg_card, fg=self.text_primary, font=styles.FONT_TITLE)
+        self.label_latest_title.pack(side=tk.LEFT)
+
+        btn_open_latest = ttk.Button(prev_header, text="Open File", command=self.open_latest_image_external)
+        btn_open_latest.pack(side=tk.RIGHT, padx=(4, 0))
+
+        btn_open_folder = ttk.Button(prev_header, text="Open Folder", command=self.open_latest_folder_external)
+        btn_open_folder.pack(side=tk.RIGHT)
+
+        # Output Location Link Bar
+        loc_frame = tk.Frame(self.sub_tab_preview, bg=self.bg_card)
+        loc_frame.pack(fill=tk.X, padx=4, pady=(0, 4))
         
+        tk.Label(loc_frame, text="Location: ", bg=self.bg_card, fg=self.text_secondary, font=styles.FONT_SMALL).pack(side=tk.LEFT)
+        self.label_latest_path = tk.Label(
+            loc_frame,
+            text="No output file generated in this session yet.",
+            bg=self.bg_card,
+            fg=self.text_secondary,
+            font=styles.FONT_SMALL,
+            anchor="w"
+        )
+        self.label_latest_path.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+        preview_card = tk.Frame(self.sub_tab_preview, bg=self.bg_input, bd=1, relief=tk.SOLID, highlightbackground=self.border_color)
+        preview_card.pack(fill=tk.BOTH, expand=True, padx=2, pady=2)
+
+        self.label_latest_preview = tk.Label(
+            preview_card,
+            text="No images generated in this session yet.\n\nRun a generation to view the output image here.",
+            bg=self.bg_input,
+            fg=self.text_secondary,
+            font=styles.FONT_MAIN,
+            cursor="hand2"
+        )
+        self.label_latest_preview.pack(fill=tk.BOTH, expand=True, padx=2, pady=2)
+        self.label_latest_preview.bind("<Button-1>", lambda e: self.open_latest_image_external())
+
+        # Sub-tab 2: Terminal Logs (Tab 1)
+        self.sub_tab_logs = tk.Frame(self.right_notebook, bg=self.bg_card)
+        self.right_notebook.add(self.sub_tab_logs, text="Terminal Logs")
+
+        console_header = tk.Frame(self.sub_tab_logs, bg=self.bg_card)
+        console_header.pack(fill=tk.X, padx=5, pady=(5, 5))
+
         tk.Label(console_header, text="Execution Terminal Logs", bg=self.bg_card, fg=self.text_primary, font=styles.FONT_TITLE).pack(side=tk.LEFT)
-        
+
         btn_copy = ttk.Button(console_header, text="Copy Logs", command=self.app.copy_logs)
         btn_copy.pack(side=tk.RIGHT, padx=(5, 0))
-        
+
         btn_clear = ttk.Button(console_header, text="Clear Logs", command=self.app.clear_logs)
         btn_clear.pack(side=tk.RIGHT)
-        
+
         self.text_terminal = tk.Text(
-            right_frame,
+            self.sub_tab_logs,
             bg=self.terminal_bg,
             fg=self.terminal_fg,
             insertbackground=self.terminal_fg,
+            insertwidth=2,
             font=styles.FONT_CODE,
             wrap=tk.WORD,
             bd=0,
@@ -484,14 +547,87 @@ class GeneratorTab:
             padx=10,
             pady=10
         )
-        self.text_terminal.pack(fill=tk.BOTH, expand=True, padx=15, pady=(0, 15))
-        
+        self.text_terminal.pack(fill=tk.BOTH, expand=True, padx=5, pady=(0, 5))
+
+        # Select Output (Tab 0) as default
+        self.right_notebook.select(0)
+
         styles.setup_text_shortcuts(self.entry_prompt)
         styles.setup_text_shortcuts(self.entry_neg_prompt)
         styles.setup_text_shortcuts(self.text_cmd_preview)
         styles.setup_text_shortcuts(self.text_terminal)
         
         self.update_cmd_preview()
+
+    def update_latest_output_preview(self, file_path=None):
+        if not file_path:
+            return
+
+        if not os.path.exists(file_path):
+            output_dir = self.app.OUTPUT_DIR
+            if not os.path.exists(output_dir):
+                return
+            extensions = ['*.png', '*.jpg', '*.jpeg', '*.webp', '*.mp4']
+            files = []
+            for ext in extensions:
+                files.extend(glob.glob(os.path.join(output_dir, ext)))
+            if not files:
+                return
+            files.sort(key=os.path.getmtime, reverse=True)
+            file_path = files[0]
+
+        abs_path = os.path.abspath(file_path)
+        filename = os.path.basename(file_path)
+        self.latest_image_path = abs_path
+        
+        self.label_latest_title.config(text=f"Output: {filename}")
+        self.label_latest_path.config(text=abs_path, fg=self.accent_blue, cursor="hand2")
+        self.label_latest_path.bind("<Button-1>", lambda e: self.open_latest_image_external())
+
+        try:
+            if file_path.lower().endswith('.mp4'):
+                self.label_latest_preview.config(image="", text=f"VIDEO OUTPUT:\n{filename}\n\nPath: {abs_path}\n(Click to open media file)")
+            else:
+                img = Image.open(file_path)
+                card_w = self.sub_tab_preview.winfo_width()
+                card_h = self.sub_tab_preview.winfo_height()
+                max_w = max(400, card_w - 20) if card_w > 50 else 700
+                max_h = max(300, card_h - 80) if card_h > 50 else 500
+                img.thumbnail((max_w, max_h), Image.Resampling.LANCZOS)
+                photo = ImageTk.PhotoImage(img)
+                self.latest_photo = photo
+                self.label_latest_preview.config(image=photo, text="")
+        except Exception as e:
+            self.label_latest_title.config(text=f"Error loading image: {e}")
+
+    def open_latest_image_external(self):
+        if not self.latest_image_path or not os.path.exists(self.latest_image_path):
+            return
+        path = self.latest_image_path
+        try:
+            if sys.platform.startswith('darwin'):
+                subprocess.Popen(['open', path])
+            elif os.name == 'nt':
+                os.startfile(path)
+            else:
+                subprocess.Popen(['xdg-open', path])
+        except Exception as e:
+            pass
+
+    def open_latest_folder_external(self):
+        output_dir = self.app.OUTPUT_DIR
+        if self.latest_image_path and os.path.exists(self.latest_image_path):
+            output_dir = os.path.dirname(self.latest_image_path)
+        os.makedirs(output_dir, exist_ok=True)
+        try:
+            if sys.platform.startswith('darwin'):
+                subprocess.Popen(['open', output_dir])
+            elif os.name == 'nt':
+                os.startfile(output_dir)
+            else:
+                subprocess.Popen(['xdg-open', output_dir])
+        except Exception as e:
+            pass
 
     def on_canvas_configure(self, event):
         if hasattr(self, 'canvas_window'):

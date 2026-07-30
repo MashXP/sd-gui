@@ -30,7 +30,10 @@ class GalleryTab:
         tk.Label(gallery_header, text="Generated Outputs", bg=self.bg_main, fg=self.text_primary, font=styles.FONT_HEADER).pack(side=tk.LEFT)
         
         btn_refresh = ttk.Button(gallery_header, text="Refresh Gallery", command=self.refresh_gallery)
-        btn_refresh.pack(side=tk.RIGHT)
+        btn_refresh.pack(side=tk.RIGHT, padx=(6, 0))
+        
+        btn_open_folder = ttk.Button(gallery_header, text="Open Folder", command=self.open_output_folder)
+        btn_open_folder.pack(side=tk.RIGHT)
         
         self.gal_canvas = tk.Canvas(self.parent, bg=self.bg_main, highlightthickness=0, bd=0)
         gal_scroll = ttk.Scrollbar(self.parent, orient="vertical", command=self.gal_canvas.yview)
@@ -43,7 +46,13 @@ class GalleryTab:
         self.gal_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=15, pady=5)
         gal_scroll.pack(side=tk.RIGHT, fill=tk.Y, pady=5)
         
+        styles.enable_mousewheel_scrolling(self.parent, self.gal_canvas)
         self.refresh_gallery()
+
+    def open_output_folder(self):
+        output_dir = self.app.OUTPUT_DIR
+        os.makedirs(output_dir, exist_ok=True)
+        self.open_file_external(output_dir)
 
     def refresh_gallery(self):
         for widget in self.gal_grid.winfo_children():

@@ -29,11 +29,14 @@ class PromptHelperTab:
         cat_frame = tk.Frame(cat_canvas, bg=self.bg_main)
         
         cat_frame.bind("<Configure>", lambda e: cat_canvas.configure(scrollregion=cat_canvas.bbox("all")))
-        cat_canvas.create_window((0, 0), window=cat_frame, anchor="nw")
+        canvas_win = cat_canvas.create_window((0, 0), window=cat_frame, anchor="nw")
+        cat_canvas.bind("<Configure>", lambda e: cat_canvas.itemconfig(canvas_win, width=e.width))
         cat_canvas.configure(yscrollcommand=cat_scroll.set)
         
         cat_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=15, pady=5)
         cat_scroll.pack(side=tk.RIGHT, fill=tk.Y, pady=5)
+        
+        styles.enable_mousewheel_scrolling(self.parent, cat_canvas)
         
         tag_categories = {
             "Art Styles & Aesthetics": [
@@ -67,9 +70,27 @@ class PromptHelperTab:
             chips_frame = tk.Frame(card, bg=self.bg_card)
             chips_frame.pack(fill=tk.X, padx=15, pady=(0, 12))
             
+            self.populate_chips_wrapped(chips_frame, tags)
+
+    def populate_chips_wrapped(self, container, tags):
+        def _layout(event=None):
+            width = container.winfo_width()
+            if width <= 50:
+                return
+            if getattr(container, '_last_width', None) == width:
+                return
+            container._last_width = width
+            
+            for child in container.winfo_children():
+                child.destroy()
+                
+            current_row = tk.Frame(container, bg=self.bg_card)
+            current_row.pack(fill=tk.X, anchor='w', pady=2)
+            row_width = 0
+            
             for tag in tags:
                 btn = tk.Button(
-                    chips_frame,
+                    current_row,
                     text=f"+ {tag}",
                     bg=self.bg_input,
                     fg=self.text_primary,
@@ -82,7 +103,31 @@ class PromptHelperTab:
                     cursor="hand2",
                     command=lambda t=tag: self.append_tag_to_prompt(t)
                 )
-                btn.pack(side=tk.LEFT, padx=4, pady=4)
+                btn_w = btn.winfo_reqwidth() + 8
+                if row_width + btn_w > (width - 30) and row_width > 0:
+                    current_row = tk.Frame(container, bg=self.bg_card)
+                    current_row.pack(fill=tk.X, anchor='w', pady=2)
+                    btn.destroy()
+                    btn = tk.Button(
+                        current_row,
+                        text=f"+ {tag}",
+                        bg=self.bg_input,
+                        fg=self.text_primary,
+                        font=styles.FONT_SMALL,
+                        bd=0,
+                        padx=10,
+                        pady=4,
+                        activebackground="#374151",
+                        activeforeground=self.text_primary,
+                        cursor="hand2",
+                        command=lambda t=tag: self.append_tag_to_prompt(t)
+                    )
+                    row_width = 0
+                    
+                btn.pack(side=tk.LEFT, padx=4, pady=2)
+                row_width += btn_w
+
+        container.bind("<Configure>", _layout)
 
     def append_tag_to_prompt(self, tag):
         prompt_text_widget = self.app.generator_tab.entry_prompt

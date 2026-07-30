@@ -26,16 +26,55 @@ FONT_HEADER = (FONT_SANS, 12, 'bold')
 FONT_SMALL = (FONT_SANS, 9)
 FONT_CODE = (FONT_MONO, 9)
 
+def setup_combobox_scroll_fix(root):
+    """Prevents comboboxes from changing values on mouse wheel scroll."""
+    root.unbind_class("TCombobox", "<MouseWheel>")
+    root.unbind_class("TCombobox", "<Button-4>")
+    root.unbind_class("TCombobox", "<Button-5>")
+
+def enable_mousewheel_scrolling(container, canvas):
+    """Enables smooth mousewheel scrolling anywhere inside a container frame."""
+    def _on_mousewheel(event):
+        if event.num == 4:
+            canvas.yview_scroll(-3, "units")
+        elif event.num == 5:
+            canvas.yview_scroll(3, "units")
+        elif event.delta:
+            canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+
+    def _bind_mousewheel(event):
+        canvas.bind_all("<MouseWheel>", _on_mousewheel)
+        canvas.bind_all("<Button-4>", _on_mousewheel)
+        canvas.bind_all("<Button-5>", _on_mousewheel)
+
+    def _unbind_mousewheel(event):
+        canvas.unbind_all("<MouseWheel>")
+        canvas.unbind_all("<Button-4>")
+        canvas.unbind_all("<Button-5>")
+
+    container.bind("<Enter>", _bind_mousewheel)
+    container.bind("<Leave>", _unbind_mousewheel)
+
 def apply_styles(root, style):
     """Enables and configures the Ttk clam theme and Listbox drop-down options."""
     style.theme_use('clam')
+    setup_combobox_scroll_fix(root)
     
-    # Configure option database for Listbox drop-downs
+    # Configure option database for Listbox drop-downs and Entry/Text/Combobox blinking caret cursor
     root.option_add('*TCombobox*Listbox.background', BG_INPUT)
     root.option_add('*TCombobox*Listbox.foreground', TEXT_PRIMARY)
     root.option_add('*TCombobox*Listbox.selectBackground', ACCENT_BLUE)
     root.option_add('*TCombobox*Listbox.selectForeground', BG_MAIN)
     root.option_add('*TCombobox*Listbox.font', FONT_MAIN)
+    root.option_add('*TCombobox*insertColor', ACCENT_BLUE)
+    root.option_add('*TCombobox*insertBackground', ACCENT_BLUE)
+    root.option_add('*TCombobox*insertWidth', 2)
+    root.option_add('*Entry.insertBackground', ACCENT_BLUE)
+    root.option_add('*Entry.insertColor', ACCENT_BLUE)
+    root.option_add('*Entry.insertWidth', 2)
+    root.option_add('*Text.insertBackground', ACCENT_BLUE)
+    root.option_add('*Text.insertColor', ACCENT_BLUE)
+    root.option_add('*Text.insertWidth', 2)
     
     # Ttk widget styling definitions
     style.configure('.',
@@ -45,10 +84,13 @@ def apply_styles(root, style):
         bordercolor=BORDER_COLOR,
         lightcolor=BORDER_COLOR,
         darkcolor=BORDER_COLOR,
+        insertcolor=ACCENT_BLUE,
+        insertwidth=2,
         font=FONT_MAIN
     )
     style.configure('TFrame', background=BG_CARD)
     style.configure('TLabel', background=BG_CARD, foreground=TEXT_PRIMARY, font=FONT_MAIN)
+    style.configure('TEntry', insertcolor=ACCENT_BLUE, insertwidth=2)
     
     # Configure Ttk Combobox style
     style.configure('TCombobox',
@@ -59,12 +101,15 @@ def apply_styles(root, style):
         arrowcolor=TEXT_PRIMARY,
         lightcolor=BORDER_COLOR,
         darkcolor=BORDER_COLOR,
+        insertcolor=ACCENT_BLUE,
+        insertwidth=2,
         padding=5
     )
     style.map('TCombobox',
         fieldbackground=[('readonly', BG_INPUT), ('active', BG_INPUT)],
         foreground=[('readonly', TEXT_PRIMARY)],
-        bordercolor=[('focus', ACCENT_BLUE), ('active', ACCENT_BLUE)]
+        bordercolor=[('focus', ACCENT_BLUE), ('active', ACCENT_BLUE)],
+        insertcolor=[('focus', ACCENT_BLUE), ('active', ACCENT_BLUE)]
     )
     
     # Configure Ttk Button style
@@ -95,6 +140,33 @@ def apply_styles(root, style):
     )
     style.map('Vertical.TScrollbar',
         background=[('active', '#4b5563'), ('pressed', ACCENT_BLUE)]
+    )
+
+    # Configure Treeview dark mode style
+    style.configure('Treeview',
+        background=BG_INPUT,
+        foreground=TEXT_PRIMARY,
+        fieldbackground=BG_INPUT,
+        bordercolor=BORDER_COLOR,
+        rowheight=28,
+        font=FONT_MAIN
+    )
+    style.map('Treeview',
+        background=[('selected', '#374151'), ('active', '#1f2937')],
+        foreground=[('selected', ACCENT_BLUE), ('active', TEXT_PRIMARY)]
+    )
+    style.configure('Treeview.Heading',
+        background=BG_CARD,
+        foreground=ACCENT_BLUE,
+        bordercolor=BORDER_COLOR,
+        lightcolor=BG_CARD,
+        darkcolor=BG_CARD,
+        font=FONT_BOLD,
+        padding=(8, 6)
+    )
+    style.map('Treeview.Heading',
+        background=[('active', BG_INPUT)],
+        foreground=[('active', TEXT_PRIMARY)]
     )
 
     # Configure TNotebook style
@@ -158,8 +230,77 @@ def setup_text_shortcuts(widget):
             event.widget.delete("insert -1c wordstart", tk.INSERT)
         return "break"
 
+    def _push_to_native_clipboard(text):
+        """Push text to the native Wayland or X11 clipboard directly,
+        bypassing Tkinter's XWayland clipboard bridge which crashes Electron/Antigravity."""
+        import subprocess, os
+        try:
+            if os.environ.get("WAYLAND_DISPLAY"):
+                proc = subprocess.Popen(
+                    ['wl-copy'],
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    text=True,
+                    start_new_session=True  # isolate from all process groups
+                )
+                proc.stdin.write(text)
+                proc.stdin.close()
+            elif os.environ.get("DISPLAY"):
+                proc = subprocess.Popen(
+                    ['xclip', '-selection', 'clipboard'],
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    text=True,
+                    start_new_session=True
+                )
+                proc.stdin.write(text)
+                proc.stdin.close()
+        except Exception:
+            pass
+
+    def copy_via_wayland(event):
+        try:
+            if is_entry:
+                if event.widget.select_present():
+                    sel = event.widget.selection_get()
+                    _push_to_native_clipboard(sel)
+            else:
+                try:
+                    sel = event.widget.get(tk.SEL_FIRST, tk.SEL_LAST)
+                    _push_to_native_clipboard(sel)
+                except tk.TclError:
+                    pass
+        except Exception:
+            pass
+        return "break"
+
+    def cut_via_wayland(event):
+        try:
+            if is_entry:
+                if event.widget.select_present():
+                    sel = event.widget.selection_get()
+                    _push_to_native_clipboard(sel)
+                    event.widget.delete(tk.SEL_FIRST, tk.SEL_LAST)
+            else:
+                try:
+                    sel = event.widget.get(tk.SEL_FIRST, tk.SEL_LAST)
+                    if sel:
+                        _push_to_native_clipboard(sel)
+                        event.widget.delete(tk.SEL_FIRST, tk.SEL_LAST)
+                except tk.TclError:
+                    pass
+        except Exception:
+            pass
+        return "break"
+
     widget.bind("<Control-a>", select_all)
     widget.bind("<Control-A>", select_all)
+    widget.bind("<Control-c>", copy_via_wayland)
+    widget.bind("<Control-C>", copy_via_wayland)
+    widget.bind("<Control-x>", cut_via_wayland)
+    widget.bind("<Control-X>", cut_via_wayland)
     widget.bind("<Control-Delete>", delete_word_forward)
     widget.bind("<Control-BackSpace>", delete_word_backward)
 
@@ -170,7 +311,8 @@ def create_custom_entry(parent, textvariable=None, **kwargs):
         textvariable=textvariable,
         bg=BG_INPUT,
         fg=TEXT_PRIMARY,
-        insertbackground=TEXT_PRIMARY,
+        insertbackground=ACCENT_BLUE,
+        insertwidth=2,
         bd=0,
         highlightthickness=1,
         highlightbackground=BORDER_COLOR,
@@ -187,7 +329,8 @@ def create_custom_text(parent, height=2, **kwargs):
         parent,
         bg=BG_INPUT,
         fg=TEXT_PRIMARY,
-        insertbackground=TEXT_PRIMARY,
+        insertbackground=ACCENT_BLUE,
+        insertwidth=2,
         bd=0,
         highlightthickness=1,
         highlightbackground=BORDER_COLOR,
