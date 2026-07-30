@@ -16,3 +16,4 @@ output/*
 !output/output_anima_demo.png
 
 _legacy
+data.db

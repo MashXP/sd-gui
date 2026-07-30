@@ -86,6 +86,72 @@ def apply_styles(root, style):
         background=[('active', '#4b5563'), ('pressed', ACCENT_BLUE)]
     )
 
+    # Configure TNotebook style
+    style.configure('TNotebook',
+        background=BG_MAIN,
+        bordercolor=BG_MAIN,
+        lightcolor=BG_MAIN,
+        darkcolor=BG_MAIN,
+        tabmargins=[2, 2, 2, 0]
+    )
+    style.configure('TNotebook.Tab',
+        background=BG_CARD,
+        foreground=TEXT_SECONDARY,
+        padding=(16, 8),
+        font=('Helvetica', 10, 'bold'),
+        bordercolor=BORDER_COLOR,
+        lightcolor=BG_CARD,
+        darkcolor=BG_CARD
+    )
+    style.map('TNotebook.Tab',
+        background=[('selected', BG_INPUT), ('active', '#1f2937')],
+        foreground=[('selected', ACCENT_BLUE), ('active', TEXT_PRIMARY)],
+        bordercolor=[('selected', ACCENT_BLUE)]
+    )
+
+def setup_text_shortcuts(widget):
+    """Enables Ctrl+A (Select All), Ctrl+Del (Delete Word Next), and Ctrl+Backspace (Delete Word Prev)."""
+    is_entry = isinstance(widget, tk.Entry)
+
+    def select_all(event):
+        if is_entry:
+            event.widget.select_range(0, tk.END)
+            event.widget.icursor(tk.END)
+        else:
+            event.widget.tag_add(tk.SEL, "1.0", "end-1c")
+            event.widget.mark_set(tk.INSERT, "end-1c")
+            event.widget.see(tk.INSERT)
+        return "break"
+
+    def delete_word_forward(event):
+        if is_entry:
+            idx = event.widget.index(tk.INSERT)
+            val = event.widget.get()
+            end = idx
+            while end < len(val) and val[end].isspace(): end += 1
+            while end < len(val) and not val[end].isspace(): end += 1
+            event.widget.delete(idx, end)
+        else:
+            event.widget.delete("insert", "insert wordend")
+        return "break"
+
+    def delete_word_backward(event):
+        if is_entry:
+            idx = event.widget.index(tk.INSERT)
+            val = event.widget.get()
+            start = idx
+            while start > 0 and val[start - 1].isspace(): start -= 1
+            while start > 0 and not val[start - 1].isspace(): start -= 1
+            event.widget.delete(start, idx)
+        else:
+            event.widget.delete("insert -1c wordstart", "insert")
+        return "break"
+
+    widget.bind("<Control-a>", select_all)
+    widget.bind("<Control-A>", select_all)
+    widget.bind("<Control-Delete>", delete_word_forward)
+    widget.bind("<Control-BackSpace>", delete_word_backward)
+
 def create_custom_entry(parent, textvariable=None, **kwargs):
     """Creates a custom modern entry box with focus border highlights."""
     entry = tk.Entry(
@@ -101,6 +167,7 @@ def create_custom_entry(parent, textvariable=None, **kwargs):
         font=('Helvetica', 10),
         **kwargs
     )
+    setup_text_shortcuts(entry)
     return entry
 
 def create_custom_text(parent, height=2, **kwargs):
@@ -122,4 +189,5 @@ def create_custom_text(parent, height=2, **kwargs):
         undo=True,
         **kwargs
     )
+    setup_text_shortcuts(text_area)
     return text_area

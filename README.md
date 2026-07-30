@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./icon.png" width="128" height="128" alt="SD-GUI Icon">
+</p>
+
 # SD-GUI: Tkinter Desktop Manager for stable-diffusion.cpp
 
 A standalone Tkinter-based desktop interface to manage, configure, and execute `stable-diffusion.cpp` text-to-image processes.

@@ -9,7 +9,7 @@ import tkinter as tk
 from app import DesktopManager
 
 def main():
-    root = tk.Tk()
+    root = tk.Tk(className="sd-gui")
     app = DesktopManager(root)
     root.mainloop()
 
