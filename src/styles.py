@@ -13,7 +13,18 @@ ACCENT_BLUE = "#38bdf8"      # Primary actions
 BTN_GREEN = "#10b981"        # Success actions
 BTN_RED = "#f43f5e"          # Danger actions
 TERMINAL_BG = "#030712"      # Monospace terminal background
-TERMINAL_FG = "#34d399"      # Cool green terminal text
+TERMINAL_FG = "#40f063"      # Cool green terminal text
+
+# Modern typography font stacks
+FONT_SANS = ("Inter", "Roboto", "Cantarell", "Ubuntu", "Noto Sans", "Liberation Sans", "DejaVu Sans", "sans-serif")
+FONT_MONO = ("JetBrains Mono", "Fira Code", "Fira Mono", "Hack", "DejaVu Sans Mono", "Liberation Mono", "monospace")
+
+FONT_MAIN = (FONT_SANS, 10)
+FONT_BOLD = (FONT_SANS, 10, 'bold')
+FONT_TITLE = (FONT_SANS, 11, 'bold')
+FONT_HEADER = (FONT_SANS, 12, 'bold')
+FONT_SMALL = (FONT_SANS, 9)
+FONT_CODE = (FONT_MONO, 9)
 
 def apply_styles(root, style):
     """Enables and configures the Ttk clam theme and Listbox drop-down options."""
@@ -24,7 +35,7 @@ def apply_styles(root, style):
     root.option_add('*TCombobox*Listbox.foreground', TEXT_PRIMARY)
     root.option_add('*TCombobox*Listbox.selectBackground', ACCENT_BLUE)
     root.option_add('*TCombobox*Listbox.selectForeground', BG_MAIN)
-    root.option_add('*TCombobox*Listbox.font', ('Helvetica', 10))
+    root.option_add('*TCombobox*Listbox.font', FONT_MAIN)
     
     # Ttk widget styling definitions
     style.configure('.',
@@ -34,10 +45,10 @@ def apply_styles(root, style):
         bordercolor=BORDER_COLOR,
         lightcolor=BORDER_COLOR,
         darkcolor=BORDER_COLOR,
-        font=('Helvetica', 10)
+        font=FONT_MAIN
     )
     style.configure('TFrame', background=BG_CARD)
-    style.configure('TLabel', background=BG_CARD, foreground=TEXT_PRIMARY, font=('Helvetica', 10))
+    style.configure('TLabel', background=BG_CARD, foreground=TEXT_PRIMARY, font=FONT_MAIN)
     
     # Configure Ttk Combobox style
     style.configure('TCombobox',
@@ -61,7 +72,7 @@ def apply_styles(root, style):
         background=BG_INPUT,
         foreground=TEXT_PRIMARY,
         bordercolor=BORDER_COLOR,
-        font=('Helvetica', 10, 'bold'),
+        font=FONT_BOLD,
         lightcolor="#374151",
         darkcolor="#111827",
         padding=(12, 6)
@@ -98,7 +109,7 @@ def apply_styles(root, style):
         background=BG_CARD,
         foreground=TEXT_SECONDARY,
         padding=(16, 8),
-        font=('Helvetica', 10, 'bold'),
+        font=FONT_BOLD,
         bordercolor=BORDER_COLOR,
         lightcolor=BG_CARD,
         darkcolor=BG_CARD
@@ -132,7 +143,7 @@ def setup_text_shortcuts(widget):
             while end < len(val) and not val[end].isspace(): end += 1
             event.widget.delete(idx, end)
         else:
-            event.widget.delete("insert", "insert wordend")
+            event.widget.delete(tk.INSERT, "insert wordend")
         return "break"
 
     def delete_word_backward(event):
@@ -144,7 +155,7 @@ def setup_text_shortcuts(widget):
             while start > 0 and not val[start - 1].isspace(): start -= 1
             event.widget.delete(start, idx)
         else:
-            event.widget.delete("insert -1c wordstart", "insert")
+            event.widget.delete("insert -1c wordstart", tk.INSERT)
         return "break"
 
     widget.bind("<Control-a>", select_all)
@@ -164,7 +175,7 @@ def create_custom_entry(parent, textvariable=None, **kwargs):
         highlightthickness=1,
         highlightbackground=BORDER_COLOR,
         highlightcolor=BORDER_FOCUS,
-        font=('Helvetica', 10),
+        font=FONT_MAIN,
         **kwargs
     )
     setup_text_shortcuts(entry)
@@ -181,7 +192,7 @@ def create_custom_text(parent, height=2, **kwargs):
         highlightthickness=1,
         highlightbackground=BORDER_COLOR,
         highlightcolor=BORDER_FOCUS,
-        font=('Helvetica', 10),
+        font=FONT_MAIN,
         height=height,
         wrap=tk.WORD,
         padx=5,

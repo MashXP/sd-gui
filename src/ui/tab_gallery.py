@@ -5,6 +5,7 @@ import glob
 import tkinter as tk
 from tkinter import ttk, messagebox
 from PIL import Image, ImageTk
+import styles
 
 class GalleryTab:
     """Manages the Output Gallery tab view, thumbnail grid, and image/video viewers."""
@@ -26,7 +27,7 @@ class GalleryTab:
         gallery_header = tk.Frame(self.parent, bg=self.bg_main)
         gallery_header.pack(fill=tk.X, padx=15, pady=(15, 8))
         
-        tk.Label(gallery_header, text="Generated Outputs", bg=self.bg_main, fg=self.text_primary, font=('Helvetica', 12, 'bold')).pack(side=tk.LEFT)
+        tk.Label(gallery_header, text="Generated Outputs", bg=self.bg_main, fg=self.text_primary, font=styles.FONT_HEADER).pack(side=tk.LEFT)
         
         btn_refresh = ttk.Button(gallery_header, text="Refresh Gallery", command=self.refresh_gallery)
         btn_refresh.pack(side=tk.RIGHT)
@@ -71,7 +72,7 @@ class GalleryTab:
             card.pack_propagate(False)
             
             if file_path.lower().endswith('.mp4'):
-                lbl_thumb = tk.Label(card, text="VIDEO\n" + filename, bg=self.bg_input, fg=self.accent_blue, font=('Helvetica', 10, 'bold'))
+                lbl_thumb = tk.Label(card, text="VIDEO\n" + filename, bg=self.bg_input, fg=self.accent_blue, font=styles.FONT_BOLD)
                 lbl_thumb.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
             else:
                 try:
@@ -86,7 +87,7 @@ class GalleryTab:
                     lbl_thumb = tk.Label(card, text="Image Error", bg=self.bg_card, fg=self.text_secondary)
                     lbl_thumb.pack(fill=tk.BOTH, expand=True)
                     
-            lbl_name = tk.Label(card, text=filename, bg=self.bg_card, fg=self.text_secondary, font=('Helvetica', 9), wraplength=220)
+            lbl_name = tk.Label(card, text=filename, bg=self.bg_card, fg=self.text_secondary, font=styles.FONT_SMALL, wraplength=220)
             lbl_name.pack(pady=(0, 6))
             
             col += 1

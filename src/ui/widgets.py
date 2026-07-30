@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
+import styles
 
 class CollapsibleFrame(tk.Frame):
     """A clean, cross-platform accordion dropdown section for Tkinter."""
@@ -22,7 +23,7 @@ class CollapsibleFrame(tk.Frame):
             text=lbl_text,
             bg=bg_card,
             fg=accent_blue,
-            font=('Helvetica', 10, 'bold'),
+            font=styles.FONT_BOLD,
             anchor='w'
         )
         self.toggle_btn.pack(side=tk.LEFT, fill=tk.X, expand=True)

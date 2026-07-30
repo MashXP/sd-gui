@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
+import styles
 
 class HistoryTab:
     """Manages the Execution History database treeview table."""
@@ -19,8 +20,8 @@ class HistoryTab:
         hist_header = tk.Frame(self.parent, bg=self.bg_main)
         hist_header.pack(fill=tk.X, padx=15, pady=(15, 8))
         
-        tk.Label(hist_header, text="Execution History Log", bg=self.bg_main, fg=self.text_primary, font=('Helvetica', 12, 'bold')).pack(side=tk.LEFT)
-        tk.Label(hist_header, text="Double-click any entry to load settings into Generator", bg=self.bg_main, fg=self.text_secondary, font=('Helvetica', 9)).pack(side=tk.LEFT, padx=15)
+        tk.Label(hist_header, text="Execution History Log", bg=self.bg_main, fg=self.text_primary, font=styles.FONT_HEADER).pack(side=tk.LEFT)
+        tk.Label(hist_header, text="Double-click any entry to load settings into Generator", bg=self.bg_main, fg=self.text_secondary, font=styles.FONT_SMALL).pack(side=tk.LEFT, padx=15)
         
         btn_refresh = ttk.Button(hist_header, text="Refresh History", command=self.refresh_history_table)
         btn_refresh.pack(side=tk.RIGHT)

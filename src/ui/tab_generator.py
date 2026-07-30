@@ -83,7 +83,7 @@ class GeneratorTab:
         # --- LEFT TILE: PROFILES & PARAMETERS ---
         header_profile = tk.Frame(left_frame, bg=self.bg_card)
         header_profile.pack(fill=tk.X, padx=15, pady=(15, 8))
-        tk.Label(header_profile, text="Profiles", bg=self.bg_card, fg=self.accent_blue, font=('Helvetica', 11, 'bold')).pack(side=tk.LEFT)
+        tk.Label(header_profile, text="Profiles", bg=self.bg_card, fg=self.accent_blue, font=styles.FONT_TITLE).pack(side=tk.LEFT)
         
         profile_frame = tk.Frame(left_frame, bg=self.bg_card)
         profile_frame.pack(fill=tk.X, padx=15, pady=(0, 10))
@@ -103,7 +103,7 @@ class GeneratorTab:
         
         header_settings = tk.Frame(left_frame, bg=self.bg_card)
         header_settings.pack(fill=tk.X, padx=15, pady=(5, 8))
-        tk.Label(header_settings, text="Parameters", bg=self.bg_card, fg=self.accent_blue, font=('Helvetica', 11, 'bold')).pack(side=tk.LEFT)
+        tk.Label(header_settings, text="Parameters", bg=self.bg_card, fg=self.accent_blue, font=styles.FONT_TITLE).pack(side=tk.LEFT)
         
         self.form_canvas = tk.Canvas(left_frame, bg=self.bg_card, highlightthickness=0, bd=0)
         scrollbar = ttk.Scrollbar(left_frame, orient="vertical", command=self.form_canvas.yview)
@@ -415,10 +415,10 @@ class GeneratorTab:
         scroll_frame.columnconfigure(1, weight=1)
 
         # --- RIGHT PANE: PREVIEW & LOGS ---
-        preview_label = tk.Label(right_frame, text="Generated Command", bg=self.bg_card, fg=self.accent_blue, font=('Helvetica', 11, 'bold'))
+        preview_label = tk.Label(right_frame, text="Generated Command", bg=self.bg_card, fg=self.accent_blue, font=styles.FONT_TITLE)
         preview_label.pack(anchor='w', padx=15, pady=(15, 4))
         
-        self.text_cmd_preview = tk.Text(right_frame, bg=self.terminal_bg, fg=self.accent_blue, insertbackground=self.accent_blue, height=4, font=('Courier', 9), bd=0, highlightthickness=1, highlightbackground=self.border_color, wrap=tk.WORD, padx=8, pady=6)
+        self.text_cmd_preview = tk.Text(right_frame, bg=self.terminal_bg, fg=self.accent_blue, insertbackground=self.accent_blue, height=4, font=styles.FONT_CODE, bd=0, highlightthickness=1, highlightbackground=self.border_color, wrap=tk.WORD, padx=8, pady=6)
         self.text_cmd_preview.pack(fill=tk.X, padx=15, pady=4)
         
         actions_frame = tk.Frame(right_frame, bg=self.bg_card)
@@ -432,7 +432,7 @@ class GeneratorTab:
             text="Start Generation",
             bg=self.btn_green,
             fg="#ffffff",
-            font=('Helvetica', 10, 'bold'),
+            font=styles.FONT_BOLD,
             bd=0,
             padx=16,
             pady=8,
@@ -448,7 +448,7 @@ class GeneratorTab:
             text="Stop Process",
             bg="#374151",
             fg=self.text_secondary,
-            font=('Helvetica', 10, 'bold'),
+            font=styles.FONT_BOLD,
             bd=0,
             padx=16,
             pady=8,
@@ -457,13 +457,13 @@ class GeneratorTab:
         )
         self.btn_stop.pack(side=tk.LEFT, padx=(0, 15))
         
-        self.label_timer = tk.Label(actions_frame, text="Ready", bg=self.bg_card, fg=self.text_secondary, font=('Helvetica', 10, 'bold'))
+        self.label_timer = tk.Label(actions_frame, text="Ready", bg=self.bg_card, fg=self.text_secondary, font=styles.FONT_BOLD)
         self.label_timer.pack(side=tk.LEFT)
         
         console_header = tk.Frame(right_frame, bg=self.bg_card)
         console_header.pack(fill=tk.X, padx=15, pady=(5, 5))
         
-        tk.Label(console_header, text="Execution Terminal Logs", bg=self.bg_card, fg=self.text_primary, font=('Helvetica', 11, 'bold')).pack(side=tk.LEFT)
+        tk.Label(console_header, text="Execution Terminal Logs", bg=self.bg_card, fg=self.text_primary, font=styles.FONT_TITLE).pack(side=tk.LEFT)
         
         btn_copy = ttk.Button(console_header, text="Copy Logs", command=self.app.copy_logs)
         btn_copy.pack(side=tk.RIGHT, padx=(5, 0))
@@ -476,7 +476,7 @@ class GeneratorTab:
             bg=self.terminal_bg,
             fg=self.terminal_fg,
             insertbackground=self.terminal_fg,
-            font=('Courier', 9),
+            font=styles.FONT_CODE,
             wrap=tk.WORD,
             bd=0,
             highlightthickness=1,

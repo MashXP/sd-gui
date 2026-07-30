@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
+import styles
 
 class PromptHelperTab:
     """Manages the Prompt Helper tag chip categories and tag insertion into the prompt."""
@@ -20,8 +21,8 @@ class PromptHelperTab:
         helper_header = tk.Frame(self.parent, bg=self.bg_main)
         helper_header.pack(fill=tk.X, padx=15, pady=(15, 8))
         
-        tk.Label(helper_header, text="Prompt Tag Helper", bg=self.bg_main, fg=self.text_primary, font=('Helvetica', 12, 'bold')).pack(side=tk.LEFT)
-        tk.Label(helper_header, text="Click any chip below to append to your active prompt", bg=self.bg_main, fg=self.text_secondary, font=('Helvetica', 9)).pack(side=tk.LEFT, padx=15)
+        tk.Label(helper_header, text="Prompt Tag Helper", bg=self.bg_main, fg=self.text_primary, font=styles.FONT_HEADER).pack(side=tk.LEFT)
+        tk.Label(helper_header, text="Click any chip below to append to your active prompt", bg=self.bg_main, fg=self.text_secondary, font=styles.FONT_SMALL).pack(side=tk.LEFT, padx=15)
         
         cat_canvas = tk.Canvas(self.parent, bg=self.bg_main, highlightthickness=0, bd=0)
         cat_scroll = ttk.Scrollbar(self.parent, orient="vertical", command=cat_canvas.yview)
@@ -61,7 +62,7 @@ class PromptHelperTab:
             card = tk.Frame(cat_frame, bg=self.bg_card, bd=1, relief=tk.SOLID, highlightbackground=self.border_color)
             card.pack(fill=tk.X, expand=True, padx=5, pady=8)
             
-            tk.Label(card, text=cat_name, bg=self.bg_card, fg=self.accent_blue, font=('Helvetica', 11, 'bold')).pack(anchor='w', padx=15, pady=(10, 6))
+            tk.Label(card, text=cat_name, bg=self.bg_card, fg=self.accent_blue, font=styles.FONT_TITLE).pack(anchor='w', padx=15, pady=(10, 6))
             
             chips_frame = tk.Frame(card, bg=self.bg_card)
             chips_frame.pack(fill=tk.X, padx=15, pady=(0, 12))
@@ -72,7 +73,7 @@ class PromptHelperTab:
                     text=f"+ {tag}",
                     bg=self.bg_input,
                     fg=self.text_primary,
-                    font=('Helvetica', 9),
+                    font=styles.FONT_SMALL,
                     bd=0,
                     padx=10,
                     pady=4,
