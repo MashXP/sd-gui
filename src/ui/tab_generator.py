@@ -137,7 +137,7 @@ class GeneratorTab:
         row += 1
 
         tk.Label(scroll_frame, text="Generation Mode (-M)", bg=self.bg_card, fg=self.text_secondary).grid(row=row, column=0, sticky='w', pady=6)
-        combo_mode = ttk.Combobox(scroll_frame, textvariable=self.var_mode, values=["txt2img", "img2img", "vid_gen", "inpaint", "convert"], state="readonly", style='TCombobox')
+        combo_mode = ttk.Combobox(scroll_frame, textvariable=self.var_mode, values=["img_gen", "adetailer", "vid_gen", "convert", "upscale", "metadata"], state="readonly", style='TCombobox')
         combo_mode.grid(row=row, column=1, sticky='we', pady=6, padx=(10, 0))
         combo_mode.bind("<<ComboboxSelected>>", lambda e: self.update_cmd_preview())
         row += 1
@@ -645,8 +645,8 @@ class GeneratorTab:
         )
         if filename:
             self.var_init_img.set(filename)
-            if self.var_mode.get() in ["", "txt2img"]:
-                self.var_mode.set("img2img")
+            if self.var_mode.get() in ["", "txt2img", "img_gen"]:
+                self.var_mode.set("img_gen")
             self.update_cmd_preview()
 
     def update_layout_for_binary_mode(self):

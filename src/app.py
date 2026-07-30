@@ -70,7 +70,7 @@ class DesktopManager:
         
         # Form field variables
         self.var_binary = tk.StringVar(value="sd-cli")
-        self.var_mode = tk.StringVar(value="txt2img")
+        self.var_mode = tk.StringVar(value="img_gen")
         self.var_backend = tk.StringVar(value="llm=cpu")
         self.var_model = tk.StringVar()
         self.var_t5xxl = tk.StringVar()
