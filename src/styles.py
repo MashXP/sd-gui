@@ -239,6 +239,7 @@ def setup_text_shortcuts(widget):
             event.widget.select_range(0, tk.END)
             event.widget.icursor(tk.END)
         else:
+            event.widget.tag_remove(tk.SEL, "1.0", tk.END)
             event.widget.tag_add(tk.SEL, "1.0", "end-1c")
             event.widget.mark_set(tk.INSERT, "end-1c")
             event.widget.see(tk.INSERT)
