@@ -299,6 +299,27 @@ def setup_text_shortcuts(widget):
         except Exception:
             pass
 
+    def _read_native_clipboard():
+        import subprocess, os
+        try:
+            if os.environ.get("WAYLAND_DISPLAY"):
+                proc = subprocess.Popen(
+                    ['wl-paste'],
+                    stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                    text=True, start_new_session=True
+                )
+                return proc.stdout.read() if proc.stdout else ""
+            elif os.environ.get("DISPLAY"):
+                proc = subprocess.Popen(
+                    ['xclip', '-selection', 'clipboard', '-o'],
+                    stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                    text=True, start_new_session=True
+                )
+                return proc.stdout.read() if proc.stdout else ""
+        except Exception:
+            pass
+        return ""
+
     def copy_via_wayland(event):
         try:
             if is_entry:
@@ -334,12 +355,35 @@ def setup_text_shortcuts(widget):
             pass
         return "break"
 
+    def paste_via_wayland(event):
+        if is_entry:
+            try:
+                if event.widget.select_present():
+                    event.widget.delete(tk.SEL_FIRST, tk.SEL_LAST)
+            except tk.TclError:
+                pass
+            text = _read_native_clipboard()
+            if text:
+                event.widget.insert(tk.INSERT, text)
+        else:
+            try:
+                if event.widget.tag_ranges(tk.SEL):
+                    event.widget.delete(tk.SEL_FIRST, tk.SEL_LAST)
+            except tk.TclError:
+                pass
+            text = _read_native_clipboard()
+            if text:
+                event.widget.insert(tk.INSERT, text)
+        return "break"
+
     widget.bind("<Control-a>", select_all)
     widget.bind("<Control-A>", select_all)
     widget.bind("<Control-c>", copy_via_wayland)
     widget.bind("<Control-C>", copy_via_wayland)
     widget.bind("<Control-x>", cut_via_wayland)
     widget.bind("<Control-X>", cut_via_wayland)
+    widget.bind("<Control-v>", paste_via_wayland)
+    widget.bind("<Control-V>", paste_via_wayland)
     widget.bind("<Control-Delete>", delete_word_forward)
     widget.bind("<Control-BackSpace>", delete_word_backward)
 
