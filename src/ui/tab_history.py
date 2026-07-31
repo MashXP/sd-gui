@@ -17,6 +17,9 @@ class HistoryTab:
         self.page = 1
         self.total_pages = 1
         self._anchor_index = None
+        self._is_dragging = False
+        self._drag_anchor_idx = None
+        self._drag_initial_selection = set()
         self.drag_entered = set()
         self.rows_data = []
         self._last_cell_value = None
@@ -27,10 +30,14 @@ class HistoryTab:
         hist_header = tk.Frame(self.parent, bg=self.bg_card)
         hist_header.pack(fill=tk.X, padx=15, pady=(15, 8))
 
-        tk.Label(hist_header, text="Execution History Log", bg=self.bg_card,
-                 fg=self.text_primary, font=styles.FONT_HEADER).pack(side=tk.LEFT)
-        tk.Label(hist_header,                  text="Check rows to delete | Ctrl+C: copy cell | Ctrl+Click: toggle | Shift+Click: range | Drag: area | Double-click: load into Generator",
-                 bg=self.bg_card, fg=self.text_secondary, font=styles.FONT_SMALL).pack(side=tk.LEFT, padx=15)
+        left_header = tk.Frame(hist_header, bg=self.bg_card)
+        left_header.pack(side=tk.LEFT)
+
+        tk.Label(left_header, text="Execution History Log", bg=self.bg_card,
+                 fg=self.text_primary, font=styles.FONT_HEADER).pack(side=tk.LEFT, padx=(0, 10))
+
+        btn_help = ttk.Button(left_header, text="?", width=3, command=self.show_help)
+        btn_help.pack(side=tk.LEFT)
 
         btn_frame = tk.Frame(hist_header, bg=self.bg_card)
         btn_frame.pack(side=tk.RIGHT)
@@ -41,16 +48,10 @@ class HistoryTab:
             activebackground=self.bg_card, activeforeground="#34d399",
             command=self.toggle_recording
         )
-        self.btn_record.pack(side=tk.LEFT, padx=4)
+        self.btn_record.pack(side=tk.LEFT, padx=8)
 
         btn_delete_sel = ttk.Button(btn_frame, text="Delete Selected", command=self.delete_selected)
         btn_delete_sel.pack(side=tk.LEFT, padx=4)
-
-        btn_delete_all = ttk.Button(btn_frame, text="Delete All", command=self.delete_all)
-        btn_delete_all.pack(side=tk.LEFT, padx=4)
-
-        btn_refresh = ttk.Button(btn_frame, text="Refresh", command=self.refresh_history_table)
-        btn_refresh.pack(side=tk.LEFT, padx=4)
 
         tree_frame = tk.Frame(self.parent, bg=self.bg_card, bd=1, relief=tk.SOLID,
                               highlightbackground=self.border_color)
@@ -89,6 +90,8 @@ class HistoryTab:
         self.tree_history.bind("<Double-1>", self.on_history_double_click)
         self.tree_history.bind("<Control-c>", self.on_ctrl_c)
         self.tree_history.bind("<Control-C>", self.on_ctrl_c)
+        self.tree_history.bind("<Delete>", self.delete_selected)
+        self.tree_history.bind("<BackSpace>", self.delete_selected)
 
         # Pagination bar
         nav_frame = tk.Frame(self.parent, bg=self.bg_main)
@@ -176,21 +179,34 @@ class HistoryTab:
         except ValueError:
             return -1
 
+    def _select_item(self, item, selected=True):
+        vals = self.tree_history.item(item, "values")
+        if not vals:
+            return
+        rec_id = vals[1]
+        if selected:
+            self.selection.add(rec_id)
+            self.tree_history.set(item, "check", "[x]")
+        else:
+            self.selection.discard(rec_id)
+            self.tree_history.set(item, "check", "[ ]")
+
     def _toggle_item(self, item):
         vals = self.tree_history.item(item, "values")
         if not vals:
             return
         rec_id = vals[1]
         if rec_id in self.selection:
-            self.selection.discard(rec_id)
-            self.tree_history.set(item, "check", "[ ]")
+            self._select_item(item, False)
         else:
-            self.selection.add(rec_id)
-            self.tree_history.set(item, "check", "[x]")
+            self._select_item(item, True)
 
     def on_button_1(self, event):
         col = self.tree_history.identify_column(event.x)
         item = self.tree_history.identify_row(event.y)
+        self._is_dragging = False
+        self._drag_anchor_idx = None
+
         if item:
             vals = self.tree_history.item(item, "values")
             if vals:
@@ -198,49 +214,89 @@ class HistoryTab:
                 if 0 <= col_idx < len(vals):
                     self._last_cell_value = vals[col_idx]
                     self._last_cell_col = col
-        if col == "#1":
-            return "break"
+
+        if col == "#1" and item:
+            idx = self._get_row_index(item)
+            if idx >= 0:
+                self._drag_anchor_idx = idx
+                ctrl = bool(event.state & 0x4)
+                shift = bool(event.state & 0x1)
+
+                if shift and self._anchor_index is not None:
+                    start = min(self._anchor_index, idx)
+                    end = max(self._anchor_index, idx)
+                    self.selection.clear()
+                    for child in self.tree_history.get_children():
+                        self.tree_history.set(child, "check", "[ ]")
+                    for i in range(start, end + 1):
+                        self._select_item(self.tree_history.get_children()[i], True)
+                    self._drag_initial_selection = set(self.selection)
+                elif ctrl:
+                    self._drag_initial_selection = set(self.selection)
+                    self._toggle_item(item)
+                    self._anchor_index = idx
+                else:
+                    self.selection.clear()
+                    for child in self.tree_history.get_children():
+                        self.tree_history.set(child, "check", "[ ]")
+                    self._select_item(item, True)
+                    self._drag_initial_selection = set(self.selection)
+                    self._anchor_index = idx
+                return "break"
 
     def on_click(self, event):
+        if self._is_dragging:
+            self._is_dragging = False
+            self._drag_anchor_idx = None
+            return
+
         col = self.tree_history.identify_column(event.x)
         item = self.tree_history.identify_row(event.y)
         if not item:
             return
 
         idx = self._get_row_index(item)
-        if col == "#1" and idx < 0:
-            return
-
-        if col == "#1":
-            ctrl = bool(event.state & 0x4)
+        if col == "#1" and idx >= 0:
             shift = bool(event.state & 0x1)
-
             if shift and self._anchor_index is not None:
-                children = self.tree_history.get_children()
                 start = min(self._anchor_index, idx)
                 end = max(self._anchor_index, idx)
-                for i in range(start, end + 1):
-                    self._toggle_item(children[i])
-            elif ctrl:
-                self._toggle_item(item)
-            else:
+                children = self.tree_history.get_children()
                 self.selection.clear()
-                for child in self.tree_history.get_children():
+                for child in children:
                     self.tree_history.set(child, "check", "[ ]")
-                self._toggle_item(item)
-                self._anchor_index = idx
+                for i in range(start, end + 1):
+                    self._select_item(children[i], True)
 
     def on_drag_motion(self, event):
         col = self.tree_history.identify_column(event.x)
-        if col != "#1":
-            return
-
         item = self.tree_history.identify_row(event.y)
-        if not item or item in self.drag_entered:
+        if col != "#1" or not item or self._drag_anchor_idx is None:
             return
 
-        self.drag_entered.add(item)
-        self._toggle_item(item)
+        curr_idx = self._get_row_index(item)
+        if curr_idx < 0:
+            return
+
+        self._is_dragging = True
+        children = self.tree_history.get_children()
+        start = min(self._drag_anchor_idx, curr_idx)
+        end = max(self._drag_anchor_idx, curr_idx)
+
+        self.selection = set(self._drag_initial_selection)
+        for i, child in enumerate(children):
+            vals = self.tree_history.item(child, "values")
+            rec_id = vals[1] if vals else None
+            if start <= i <= end:
+                if rec_id:
+                    self.selection.add(rec_id)
+                self.tree_history.set(child, "check", "[x]")
+            elif rec_id and rec_id in self._drag_initial_selection:
+                self.tree_history.set(child, "check", "[x]")
+            else:
+                if rec_id:
+                    self.selection.discard(rec_id)
+                self.tree_history.set(child, "check", "[ ]")
 
     def toggle_recording(self):
         recording = self.app.var_record_history.get()
@@ -249,6 +305,17 @@ class HistoryTab:
             self.btn_record.config(text="● Recording", fg="#34d399")
         else:
             self.btn_record.config(text="○ Paused", fg=self.text_secondary)
+
+    def show_help(self):
+        msg = (
+            "Execution History Log Controls:\n\n"
+            "• Selection: Check row boxes, Shift+Click for range, or Drag to multi-select.\n"
+            "• Toggle Row: Ctrl+Click to toggle individual row selections.\n"
+            "• Delete Entries: Click 'Delete Selected' or press Delete / Backspace.\n"
+            "• Copy Cell Value: Press Ctrl+C on Prompt or Seed cells to copy text.\n"
+            "• Load Parameters: Double-click any row to populate values into Generator."
+        )
+        messagebox.showinfo("History Log Shortcuts & Help", msg)
 
     def on_ctrl_c(self, event):
         val = self._last_cell_value
@@ -259,17 +326,24 @@ class HistoryTab:
             self.app.show_toast(f"Copied {col_name}: {val[:60]}{'...' if len(val) > 60 else ''}")
         return "break"
 
-    def delete_selected(self):
+    def delete_selected(self, event=None):
         if not self.selection:
-            messagebox.showinfo("Delete", "No entries selected. Click the [ ] checkbox to select rows.")
-            return
+            focus_item = self.tree_history.focus()
+            if focus_item:
+                vals = self.tree_history.item(focus_item, "values")
+                if vals and len(vals) > 1 and vals[1]:
+                    self.selection.add(vals[1])
+        if not self.selection:
+            messagebox.showinfo("Delete", "No entries selected. Click the [ ] checkbox or select a row to delete.")
+            return "break"
         ids = list(self.selection)
         if not messagebox.askyesno("Confirm Delete",
                                    f"Delete {len(ids)} selected history entr{'y' if len(ids) == 1 else 'ies'}?"):
-            return
+            return "break"
         self.app.db.delete_entries([int(i) for i in ids])
         self.refresh_history_table()
         self.app.show_toast(f"Deleted {len(ids)} entr{'y' if len(ids) == 1 else 'ies'}")
+        return "break"
 
     def delete_all(self):
         total = self.app.db.count_all()
