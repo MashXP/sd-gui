@@ -6,7 +6,7 @@ import tkinter as tk
 from tkinter import ttk, filedialog
 from PIL import Image, ImageTk
 import styles
-from ui.widgets import CollapsibleFrame
+from ui.widgets import CollapsibleFrame, setup_filterable_combobox
 from ui.tab_gallery import GalleryTab
 from ui.tab_prompt_helper import PromptHelperTab
 from ui.tab_history import HistoryTab
@@ -156,29 +156,25 @@ class GeneratorTab:
         tk.Label(scroll_frame, text="Diffusion Model", bg=self.bg_card, fg=self.text_secondary).grid(row=row, column=0, sticky='w', pady=6)
         self.combo_model = ttk.Combobox(scroll_frame, textvariable=self.var_model, style='TCombobox')
         self.combo_model.grid(row=row, column=1, sticky='we', pady=6, padx=(10, 0))
-        self.combo_model.bind("<<ComboboxSelected>>", lambda e: self.update_cmd_preview())
-        self.combo_model.bind("<KeyRelease>", lambda e: self.update_cmd_preview())
+        setup_filterable_combobox(self.combo_model, lambda: self.app.scanned_models, lambda e=None: self.update_cmd_preview())
         row += 1
         
         tk.Label(scroll_frame, text="Text Encoder (T5XXL)", bg=self.bg_card, fg=self.text_secondary).grid(row=row, column=0, sticky='w', pady=6)
         self.combo_t5xxl = ttk.Combobox(scroll_frame, textvariable=self.var_t5xxl, style='TCombobox')
         self.combo_t5xxl.grid(row=row, column=1, sticky='we', pady=6, padx=(10, 0))
-        self.combo_t5xxl.bind("<<ComboboxSelected>>", lambda e: self.update_cmd_preview())
-        self.combo_t5xxl.bind("<KeyRelease>", lambda e: self.update_cmd_preview())
+        setup_filterable_combobox(self.combo_t5xxl, lambda: self.app.scanned_models, lambda e=None: self.update_cmd_preview())
         row += 1
         
         tk.Label(scroll_frame, text="Text Encoder (LLM)", bg=self.bg_card, fg=self.text_secondary).grid(row=row, column=0, sticky='w', pady=6)
         self.combo_llm = ttk.Combobox(scroll_frame, textvariable=self.var_llm, style='TCombobox')
         self.combo_llm.grid(row=row, column=1, sticky='we', pady=6, padx=(10, 0))
-        self.combo_llm.bind("<<ComboboxSelected>>", lambda e: self.update_cmd_preview())
-        self.combo_llm.bind("<KeyRelease>", lambda e: self.update_cmd_preview())
+        setup_filterable_combobox(self.combo_llm, lambda: self.app.scanned_models, lambda e=None: self.update_cmd_preview())
         row += 1
         
         tk.Label(scroll_frame, text="VAE Decoder", bg=self.bg_card, fg=self.text_secondary).grid(row=row, column=0, sticky='w', pady=6)
         self.combo_vae = ttk.Combobox(scroll_frame, textvariable=self.var_vae, style='TCombobox')
         self.combo_vae.grid(row=row, column=1, sticky='we', pady=6, padx=(10, 0))
-        self.combo_vae.bind("<<ComboboxSelected>>", lambda e: self.update_cmd_preview())
-        self.combo_vae.bind("<KeyRelease>", lambda e: self.update_cmd_preview())
+        setup_filterable_combobox(self.combo_vae, lambda: self.app.scanned_models, lambda e=None: self.update_cmd_preview())
         row += 1
         
         tk.Label(scroll_frame, text="Prompt", bg=self.bg_card, fg=self.text_secondary).grid(row=row, column=0, sticky='nw', pady=6)

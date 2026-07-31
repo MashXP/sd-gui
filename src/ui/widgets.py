@@ -48,3 +48,35 @@ class CollapsibleFrame(tk.Frame):
 
         if self.on_toggle:
             self.on_toggle()
+
+def setup_filterable_combobox(combo, get_full_list_func, on_change_callback=None):
+    """
+    Enables live auto-suggest filtering on a ttk.Combobox as the user types.
+    Filters dropdown choices seamlessly based on current text without resetting when clicking the dropdown.
+    """
+    def _filter_values(event=None):
+        if event and hasattr(event, 'keysym') and event.keysym in ("Up", "Down", "Return", "Escape", "Tab", "Shift_L", "Shift_R", "Control_L", "Control_R", "Alt_L", "Alt_R", "Caps_Lock"):
+            if on_change_callback:
+                on_change_callback(event)
+            return
+
+        typed = combo.get().strip()
+        full_list = get_full_list_func()
+        
+        if not typed:
+            matches = [""] + list(full_list)
+        else:
+            typed_lower = typed.lower()
+            matches = [item for item in full_list if typed_lower in item.lower()]
+            curr = combo.get()
+            if curr and curr not in matches:
+                matches.insert(0, curr)
+
+        combo['values'] = matches
+        
+        if on_change_callback:
+            on_change_callback(event)
+
+    combo.bind("<KeyRelease>", _filter_values)
+    combo.bind("<<ComboboxSelected>>", lambda e: on_change_callback(e) if on_change_callback else None)
+
