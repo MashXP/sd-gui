@@ -111,10 +111,12 @@ class DesktopManager:
         self.var_hires_denoise = tk.StringVar(value="")
         self.var_hires_steps = tk.StringVar(value="")
         
-        # Advanced SLG & Tiling variables
+        # Advanced SLG & Tiling & LoRA variables
         self.var_slg_scale = tk.StringVar(value="")
         self.var_skip_layers = tk.StringVar(value="")
         self.var_vae_tile_size = tk.StringVar(value="")
+        self.var_lora_dir = tk.StringVar(value="")
+        self.var_lora_apply_mode = tk.StringVar(value="")
         
         # Boolean advanced flags
         self.var_vae_tiling = tk.BooleanVar(value=True)
@@ -304,6 +306,14 @@ class DesktopManager:
         if vsize:
             cmd += ["--vae-tile-size", vsize]
             
+        lora_dir = self.var_lora_dir.get().strip()
+        if lora_dir:
+            cmd += ["--lora-model-dir", lora_dir]
+            
+        lora_mode = self.var_lora_apply_mode.get().strip()
+        if lora_mode:
+            cmd += ["--lora-apply-mode", lora_mode]
+            
         if self.var_vae_tiling.get():
             cmd += ["--vae-tiling"]
         if self.var_vae_conv_direct.get():
@@ -392,6 +402,8 @@ class DesktopManager:
         if "SLG_SCALE" in config: self.var_slg_scale.set(config["SLG_SCALE"])
         if "SKIP_LAYERS" in config: self.var_skip_layers.set(config["SKIP_LAYERS"])
         if "VAE_TILE_SIZE" in config: self.var_vae_tile_size.set(config["VAE_TILE_SIZE"])
+        if "LORA_MODEL_DIR" in config: self.var_lora_dir.set(config["LORA_MODEL_DIR"])
+        if "LORA_APPLY_MODE" in config: self.var_lora_apply_mode.set(config["LORA_APPLY_MODE"])
         
         if "CIRCULAR" in config: self.var_circular.set(config["CIRCULAR"].lower() == "true")
         if "DISABLE_IMAGE_METADATA" in config: self.var_disable_metadata.set(config["DISABLE_IMAGE_METADATA"].lower() == "true")
@@ -459,6 +471,8 @@ class DesktopManager:
             "SLG_SCALE": self.var_slg_scale.get().strip(),
             "SKIP_LAYERS": self.var_skip_layers.get().strip(),
             "VAE_TILE_SIZE": self.var_vae_tile_size.get().strip(),
+            "LORA_MODEL_DIR": self.var_lora_dir.get().strip(),
+            "LORA_APPLY_MODE": self.var_lora_apply_mode.get().strip(),
             "CIRCULAR": str(self.var_circular.get()).lower(),
             "DISABLE_IMAGE_METADATA": str(self.var_disable_metadata.get()).lower(),
             "OUTPUT": out_val,

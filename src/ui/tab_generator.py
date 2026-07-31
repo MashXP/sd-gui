@@ -70,6 +70,8 @@ class GeneratorTab:
         self.var_slg_scale = app.var_slg_scale
         self.var_skip_layers = app.var_skip_layers
         self.var_vae_tile_size = app.var_vae_tile_size
+        self.var_lora_dir = app.var_lora_dir
+        self.var_lora_apply_mode = app.var_lora_apply_mode
         
         self.var_vae_tiling = app.var_vae_tiling
         self.var_vae_conv_direct = app.var_vae_conv_direct
@@ -291,11 +293,100 @@ class GeneratorTab:
         self.entry_listen_port.bind("<KeyRelease>", lambda e: self.update_cmd_preview())
         row += 1
 
-        # --- ACCORDION COLLAPSIBLE SECTIONS (DELEGATED ADVANCED OPTIONS) ---
+        # --- ACCORDION COLLAPSIBLE SECTIONS (SD-SERVER ALIGNED SECTIONS) ---
 
-        # 1. Section: Image-to-Image & Highres Fix
+        # 1. Section: Sample & Steps
+        c_sample = CollapsibleFrame(scroll_frame, title="Sample & Steps", bg_card=self.bg_card, accent_blue=self.accent_blue, text_primary=self.text_primary, expanded=False, on_toggle=self.update_scrollregion)
+        c_sample.grid(row=row, column=0, columnspan=2, sticky='we', pady=(8, 2))
+        row += 1
+        
+        f_samp = c_sample.content
+        f_samp.columnconfigure(1, weight=1)
+        r_sub = 0
+
+        tk.Label(f_samp, text="Sampling Method", bg=self.bg_card, fg=self.text_secondary).grid(row=r_sub, column=0, sticky='w', pady=4)
+        combo_sampler = ttk.Combobox(f_samp, textvariable=self.var_sampler, values=["euler", "er_sde", "dpm++2s_a", "euler_a", "dpm++2m_sde", "tcd", "lcm"], state="readonly", style='TCombobox')
+        combo_sampler.grid(row=r_sub, column=1, sticky='we', pady=4, padx=(8, 0))
+        combo_sampler.bind("<<ComboboxSelected>>", lambda e: self.update_cmd_preview())
+        r_sub += 1
+
+        tk.Label(f_samp, text="Scheduler", bg=self.bg_card, fg=self.text_secondary).grid(row=r_sub, column=0, sticky='w', pady=4)
+        combo_sched = ttk.Combobox(f_samp, textvariable=self.var_scheduler, values=["", "discrete", "smoothstep", "karras", "flux2", "ays", "exponential"], state="readonly", style='TCombobox')
+        combo_sched.grid(row=r_sub, column=1, sticky='we', pady=4, padx=(8, 0))
+        combo_sched.bind("<<ComboboxSelected>>", lambda e: self.update_cmd_preview())
+        r_sub += 1
+
+        tk.Label(f_samp, text="Flow Shift / Video Frames", bg=self.bg_card, fg=self.text_secondary).grid(row=r_sub, column=0, sticky='w', pady=4)
+        vid_frame = tk.Frame(f_samp, bg=self.bg_card)
+        vid_frame.grid(row=r_sub, column=1, sticky='we', pady=4, padx=(8, 0))
+        
+        entry_flow = styles.create_custom_entry(vid_frame, textvariable=self.var_flow_shift, width=7)
+        entry_flow.pack(side=tk.LEFT, padx=(0, 8), ipady=3)
+        entry_flow.bind("<KeyRelease>", lambda e: self.update_cmd_preview())
+        
+        entry_vframes = styles.create_custom_entry(vid_frame, textvariable=self.var_video_frames, width=10)
+        entry_vframes.pack(side=tk.LEFT, ipady=3)
+        entry_vframes.bind("<KeyRelease>", lambda e: self.update_cmd_preview())
+        r_sub += 1
+
+        # 2. Section: Guidance & SLG
+        c_guidance = CollapsibleFrame(scroll_frame, title="Guidance & SLG", bg_card=self.bg_card, accent_blue=self.accent_blue, text_primary=self.text_primary, expanded=False, on_toggle=self.update_scrollregion)
+        c_guidance.grid(row=row, column=0, columnspan=2, sticky='we', pady=(4, 2))
+        row += 1
+
+        f_guide = c_guidance.content
+        f_guide.columnconfigure(1, weight=1)
+        r_sub = 0
+
+        tk.Label(f_guide, text="Distilled Guidance", bg=self.bg_card, fg=self.text_secondary).grid(row=r_sub, column=0, sticky='w', pady=4)
+        entry_guidance = styles.create_custom_entry(f_guide, textvariable=self.var_guidance, width=10)
+        entry_guidance.grid(row=r_sub, column=1, sticky='w', pady=4, padx=(8, 0), ipady=3)
+        entry_guidance.bind("<KeyRelease>", lambda e: self.update_cmd_preview())
+        r_sub += 1
+
+        tk.Label(f_guide, text="SLG Scale / Skip Layers", bg=self.bg_card, fg=self.text_secondary).grid(row=r_sub, column=0, sticky='w', pady=4)
+        slg_frame = tk.Frame(f_guide, bg=self.bg_card)
+        slg_frame.grid(row=r_sub, column=1, sticky='we', pady=4, padx=(8, 0))
+        
+        entry_slg = styles.create_custom_entry(slg_frame, textvariable=self.var_slg_scale, width=7)
+        entry_slg.pack(side=tk.LEFT, padx=(0, 8), ipady=3)
+        entry_slg.bind("<KeyRelease>", lambda e: self.update_cmd_preview())
+        
+        entry_skip = styles.create_custom_entry(slg_frame, textvariable=self.var_skip_layers, width=10)
+        entry_skip.pack(side=tk.LEFT, ipady=3)
+        entry_skip.bind("<KeyRelease>", lambda e: self.update_cmd_preview())
+        r_sub += 1
+
+        # 3. Section: LoRA Configuration
+        c_lora = CollapsibleFrame(scroll_frame, title="LoRA Configuration", bg_card=self.bg_card, accent_blue=self.accent_blue, text_primary=self.text_primary, expanded=False, on_toggle=self.update_scrollregion)
+        c_lora.grid(row=row, column=0, columnspan=2, sticky='we', pady=(4, 2))
+        row += 1
+
+        f_lora = c_lora.content
+        f_lora.columnconfigure(1, weight=1)
+        r_sub = 0
+
+        tk.Label(f_lora, text="LoRA Directory", bg=self.bg_card, fg=self.text_secondary).grid(row=r_sub, column=0, sticky='w', pady=4)
+        lora_frame = tk.Frame(f_lora, bg=self.bg_card)
+        lora_frame.grid(row=r_sub, column=1, sticky='we', pady=4, padx=(8, 0))
+        
+        entry_lora = styles.create_custom_entry(lora_frame, textvariable=self.var_lora_dir)
+        entry_lora.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5), ipady=3)
+        entry_lora.bind("<KeyRelease>", lambda e: self.update_cmd_preview())
+        
+        btn_browse_lora = ttk.Button(lora_frame, text="Browse...", command=self.browse_lora_dir)
+        btn_browse_lora.pack(side=tk.LEFT)
+        r_sub += 1
+
+        tk.Label(f_lora, text="LoRA Apply Mode", bg=self.bg_card, fg=self.text_secondary).grid(row=r_sub, column=0, sticky='w', pady=4)
+        combo_lora_mode = ttk.Combobox(f_lora, textvariable=self.var_lora_apply_mode, values=["", "auto", "immediately", "at_runtime"], state="readonly", style='TCombobox')
+        combo_lora_mode.grid(row=r_sub, column=1, sticky='we', pady=4, padx=(8, 0))
+        combo_lora_mode.bind("<<ComboboxSelected>>", lambda e: self.update_cmd_preview())
+        r_sub += 1
+
+        # 4. Section: Image-to-Image & Highres Fix
         c_hires = CollapsibleFrame(scroll_frame, title="Image-to-Image & Highres Fix", bg_card=self.bg_card, accent_blue=self.accent_blue, text_primary=self.text_primary, expanded=False, on_toggle=self.update_scrollregion)
-        c_hires.grid(row=row, column=0, columnspan=2, sticky='we', pady=(8, 2))
+        c_hires.grid(row=row, column=0, columnspan=2, sticky='we', pady=(4, 2))
         row += 1
         
         f_hires = c_hires.content
@@ -345,88 +436,23 @@ class GeneratorTab:
         entry_hsteps.bind("<KeyRelease>", lambda e: self.update_cmd_preview())
         r_sub += 1
 
-        # 2. Section: Sampler & Scheduler Settings
-        c_sampler = CollapsibleFrame(scroll_frame, title="Sampler & Scheduler Settings", bg_card=self.bg_card, accent_blue=self.accent_blue, text_primary=self.text_primary, expanded=False, on_toggle=self.update_scrollregion)
-        c_sampler.grid(row=row, column=0, columnspan=2, sticky='we', pady=(4, 2))
+        # 5. Section: VAE & Performance Flags
+        c_vae = CollapsibleFrame(scroll_frame, title="VAE & Performance Flags", bg_card=self.bg_card, accent_blue=self.accent_blue, text_primary=self.text_primary, expanded=False, on_toggle=self.update_scrollregion)
+        c_vae.grid(row=row, column=0, columnspan=2, sticky='we', pady=(4, 2))
         row += 1
 
-        f_samp = c_sampler.content
-        f_samp.columnconfigure(1, weight=1)
+        f_vae = c_vae.content
+        f_vae.columnconfigure(1, weight=1)
         r_sub = 0
 
-        tk.Label(f_samp, text="Sampling Method", bg=self.bg_card, fg=self.text_secondary).grid(row=r_sub, column=0, sticky='w', pady=4)
-        combo_sampler = ttk.Combobox(f_samp, textvariable=self.var_sampler, values=["euler", "er_sde", "dpm++2s_a", "euler_a", "dpm++2m_sde", "tcd", "lcm"], state="readonly", style='TCombobox')
-        combo_sampler.grid(row=r_sub, column=1, sticky='we', pady=4, padx=(8, 0))
-        combo_sampler.bind("<<ComboboxSelected>>", lambda e: self.update_cmd_preview())
-        r_sub += 1
-
-        tk.Label(f_samp, text="Scheduler", bg=self.bg_card, fg=self.text_secondary).grid(row=r_sub, column=0, sticky='w', pady=4)
-        combo_sched = ttk.Combobox(f_samp, textvariable=self.var_scheduler, values=["", "discrete", "smoothstep", "karras", "flux2", "ays", "exponential"], state="readonly", style='TCombobox')
-        combo_sched.grid(row=r_sub, column=1, sticky='we', pady=4, padx=(8, 0))
-        combo_sched.bind("<<ComboboxSelected>>", lambda e: self.update_cmd_preview())
-        r_sub += 1
-
-        # 3. Section: Advanced & Performance Settings
-        c_adv = CollapsibleFrame(scroll_frame, title="Advanced & Performance Options", bg_card=self.bg_card, accent_blue=self.accent_blue, text_primary=self.text_primary, expanded=False, on_toggle=self.update_scrollregion)
-        c_adv.grid(row=row, column=0, columnspan=2, sticky='we', pady=(4, 6))
-        row += 1
-
-        f_adv = c_adv.content
-        f_adv.columnconfigure(1, weight=1)
-        r_sub = 0
-
-        tk.Label(f_adv, text="Flow Shift / Video Frames", bg=self.bg_card, fg=self.text_secondary).grid(row=r_sub, column=0, sticky='w', pady=4)
-        vid_frame = tk.Frame(f_adv, bg=self.bg_card)
-        vid_frame.grid(row=r_sub, column=1, sticky='we', pady=4, padx=(8, 0))
-        
-        entry_flow = styles.create_custom_entry(vid_frame, textvariable=self.var_flow_shift, width=7)
-        entry_flow.pack(side=tk.LEFT, padx=(0, 8), ipady=3)
-        entry_flow.bind("<KeyRelease>", lambda e: self.update_cmd_preview())
-        
-        entry_vframes = styles.create_custom_entry(vid_frame, textvariable=self.var_video_frames, width=10)
-        entry_vframes.pack(side=tk.LEFT, ipady=3)
-        entry_vframes.bind("<KeyRelease>", lambda e: self.update_cmd_preview())
-        r_sub += 1
-
-        tk.Label(f_adv, text="Cache Mode", bg=self.bg_card, fg=self.text_secondary).grid(row=r_sub, column=0, sticky='w', pady=4)
-        combo_cache = ttk.Combobox(f_adv, textvariable=self.var_cache, values=["none", "spectrum", "easycache", "taylorseer", "dbcache"], state="readonly", style='TCombobox')
-        combo_cache.grid(row=r_sub, column=1, sticky='we', pady=4, padx=(8, 0))
-        combo_cache.bind("<<ComboboxSelected>>", lambda e: self.update_cmd_preview())
-        r_sub += 1
-
-        tk.Label(f_adv, text="Cache Options", bg=self.bg_card, fg=self.text_secondary).grid(row=r_sub, column=0, sticky='w', pady=4)
-        entry_cache_opt = styles.create_custom_entry(f_adv, textvariable=self.var_cache_option)
-        entry_cache_opt.grid(row=r_sub, column=1, sticky='we', pady=4, padx=(8, 0), ipady=3)
-        entry_cache_opt.bind("<KeyRelease>", lambda e: self.update_cmd_preview())
-        r_sub += 1
-
-        tk.Label(f_adv, text="SLG Scale / Skip Layers", bg=self.bg_card, fg=self.text_secondary).grid(row=r_sub, column=0, sticky='w', pady=4)
-        slg_frame = tk.Frame(f_adv, bg=self.bg_card)
-        slg_frame.grid(row=r_sub, column=1, sticky='we', pady=4, padx=(8, 0))
-        
-        entry_slg = styles.create_custom_entry(slg_frame, textvariable=self.var_slg_scale, width=7)
-        entry_slg.pack(side=tk.LEFT, padx=(0, 8), ipady=3)
-        entry_slg.bind("<KeyRelease>", lambda e: self.update_cmd_preview())
-        
-        entry_skip = styles.create_custom_entry(slg_frame, textvariable=self.var_skip_layers, width=10)
-        entry_skip.pack(side=tk.LEFT, ipady=3)
-        entry_skip.bind("<KeyRelease>", lambda e: self.update_cmd_preview())
-        r_sub += 1
-
-        tk.Label(f_adv, text="VAE Tile Size", bg=self.bg_card, fg=self.text_secondary).grid(row=r_sub, column=0, sticky='w', pady=4)
-        entry_vsize = styles.create_custom_entry(f_adv, textvariable=self.var_vae_tile_size)
+        tk.Label(f_vae, text="VAE Tile Size", bg=self.bg_card, fg=self.text_secondary).grid(row=r_sub, column=0, sticky='w', pady=4)
+        entry_vsize = styles.create_custom_entry(f_vae, textvariable=self.var_vae_tile_size)
         entry_vsize.grid(row=r_sub, column=1, sticky='we', pady=4, padx=(8, 0), ipady=3)
         entry_vsize.bind("<KeyRelease>", lambda e: self.update_cmd_preview())
         r_sub += 1
 
-        tk.Label(f_adv, text="Extra CLI Flags", bg=self.bg_card, fg=self.text_secondary).grid(row=r_sub, column=0, sticky='w', pady=4)
-        entry_extra = styles.create_custom_entry(f_adv, textvariable=self.var_extra_flags)
-        entry_extra.grid(row=r_sub, column=1, sticky='we', pady=4, padx=(8, 0), ipady=3)
-        entry_extra.bind("<KeyRelease>", lambda e: self.update_cmd_preview())
-        r_sub += 1
-
-        tk.Label(f_adv, text="Performance Flags", bg=self.bg_card, fg=self.text_secondary).grid(row=r_sub, column=0, sticky='nw', pady=6)
-        chk_frame = tk.Frame(f_adv, bg=self.bg_card)
+        tk.Label(f_vae, text="Performance Flags", bg=self.bg_card, fg=self.text_secondary).grid(row=r_sub, column=0, sticky='nw', pady=6)
+        chk_frame = tk.Frame(f_vae, bg=self.bg_card)
         chk_frame.grid(row=r_sub, column=1, sticky='we', pady=6, padx=(8, 0))
         
         self.chk_vae = tk.Checkbutton(chk_frame, text="VAE Tiling", variable=self.var_vae_tiling, bg=self.bg_card, fg=self.text_primary, selectcolor=self.bg_main, activebackground=self.bg_card, activeforeground=self.text_primary, font=styles.FONT_MAIN, command=self.update_cmd_preview)
@@ -447,6 +473,43 @@ class GeneratorTab:
         self.chk_metadata = tk.Checkbutton(chk_frame, text="Disable Metadata", variable=self.var_disable_metadata, bg=self.bg_card, fg=self.text_primary, selectcolor=self.bg_main, activebackground=self.bg_card, activeforeground=self.text_primary, font=styles.FONT_MAIN, command=self.update_cmd_preview)
         self.chk_metadata.pack(anchor='w', pady=2)
         r_sub += 1
+
+        # 6. Section: Cache Settings
+        c_cache = CollapsibleFrame(scroll_frame, title="Cache Settings", bg_card=self.bg_card, accent_blue=self.accent_blue, text_primary=self.text_primary, expanded=False, on_toggle=self.update_scrollregion)
+        c_cache.grid(row=row, column=0, columnspan=2, sticky='we', pady=(4, 2))
+        row += 1
+
+        f_cache = c_cache.content
+        f_cache.columnconfigure(1, weight=1)
+        r_sub = 0
+
+        tk.Label(f_cache, text="Cache Mode", bg=self.bg_card, fg=self.text_secondary).grid(row=r_sub, column=0, sticky='w', pady=4)
+        combo_cache = ttk.Combobox(f_cache, textvariable=self.var_cache, values=["none", "spectrum", "easycache", "taylorseer", "dbcache"], state="readonly", style='TCombobox')
+        combo_cache.grid(row=r_sub, column=1, sticky='we', pady=4, padx=(8, 0))
+        combo_cache.bind("<<ComboboxSelected>>", lambda e: self.update_cmd_preview())
+        r_sub += 1
+
+        tk.Label(f_cache, text="Cache Options", bg=self.bg_card, fg=self.text_secondary).grid(row=r_sub, column=0, sticky='w', pady=4)
+        entry_cache_opt = styles.create_custom_entry(f_cache, textvariable=self.var_cache_option)
+        entry_cache_opt.grid(row=r_sub, column=1, sticky='we', pady=4, padx=(8, 0), ipady=3)
+        entry_cache_opt.bind("<KeyRelease>", lambda e: self.update_cmd_preview())
+        r_sub += 1
+
+        # 7. Section: Advanced & Extra CLI Flags
+        c_adv = CollapsibleFrame(scroll_frame, title="Advanced & Extra Flags", bg_card=self.bg_card, accent_blue=self.accent_blue, text_primary=self.text_primary, expanded=False, on_toggle=self.update_scrollregion)
+        c_adv.grid(row=row, column=0, columnspan=2, sticky='we', pady=(4, 6))
+        row += 1
+
+        f_adv = c_adv.content
+        f_adv.columnconfigure(1, weight=1)
+        r_sub = 0
+
+        tk.Label(f_adv, text="Extra CLI Flags", bg=self.bg_card, fg=self.text_secondary).grid(row=r_sub, column=0, sticky='w', pady=4)
+        entry_extra = styles.create_custom_entry(f_adv, textvariable=self.var_extra_flags)
+        entry_extra.grid(row=r_sub, column=1, sticky='we', pady=4, padx=(8, 0), ipady=3)
+        entry_extra.bind("<KeyRelease>", lambda e: self.update_cmd_preview())
+        r_sub += 1
+
         
         scroll_frame.columnconfigure(1, weight=1)
 
@@ -692,6 +755,14 @@ class GeneratorTab:
             self.var_init_img.set(filename)
             if self.var_mode.get() in ["", "txt2img", "img_gen"]:
                 self.var_mode.set("img_gen")
+            self.update_cmd_preview()
+
+    def browse_lora_dir(self):
+        directory = filedialog.askdirectory(
+            title="Select LoRA Model Directory"
+        )
+        if directory:
+            self.var_lora_dir.set(directory)
             self.update_cmd_preview()
 
     def update_layout_for_binary_mode(self):
