@@ -24,10 +24,10 @@ class GalleryTab:
         self.build_ui()
 
     def build_ui(self):
-        gallery_header = tk.Frame(self.parent, bg=self.bg_main)
+        gallery_header = tk.Frame(self.parent, bg=self.bg_card)
         gallery_header.pack(fill=tk.X, padx=15, pady=(15, 8))
         
-        tk.Label(gallery_header, text="Generated Outputs", bg=self.bg_main, fg=self.text_primary, font=styles.FONT_HEADER).pack(side=tk.LEFT)
+        tk.Label(gallery_header, text="Generated Outputs", bg=self.bg_card, fg=self.text_primary, font=styles.FONT_HEADER).pack(side=tk.LEFT)
         
         btn_refresh = ttk.Button(gallery_header, text="Refresh Gallery", command=self.refresh_gallery)
         btn_refresh.pack(side=tk.RIGHT, padx=(6, 0))
@@ -35,9 +35,9 @@ class GalleryTab:
         btn_open_folder = ttk.Button(gallery_header, text="Open Folder", command=self.open_output_folder)
         btn_open_folder.pack(side=tk.RIGHT)
         
-        self.gal_canvas = tk.Canvas(self.parent, bg=self.bg_main, highlightthickness=0, bd=0)
+        self.gal_canvas = tk.Canvas(self.parent, bg=self.bg_card, highlightthickness=0, bd=0)
         gal_scroll = ttk.Scrollbar(self.parent, orient="vertical", command=self.gal_canvas.yview)
-        self.gal_grid = tk.Frame(self.gal_canvas, bg=self.bg_main)
+        self.gal_grid = tk.Frame(self.gal_canvas, bg=self.bg_card)
         
         self.gal_grid.bind("<Configure>", lambda e: self.gal_canvas.configure(scrollregion=self.gal_canvas.bbox("all")))
         self.gal_canvas.create_window((0, 0), window=self.gal_grid, anchor="nw")

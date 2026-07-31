@@ -158,25 +158,17 @@ class DesktopManager:
         self.generator_tab.combo_profile['values'] = self.profile_list
 
     def build_ui(self):
-        # Master Notebook Container
-        self.notebook = ttk.Notebook(self.root)
-        self.notebook.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        # Main Application Container
+        self.main_container = tk.Frame(self.root, bg=self.bg_main)
+        self.main_container.pack(fill=tk.BOTH, expand=True)
         
-        # Create Tab Frames
-        self.tab_generator_frame = tk.Frame(self.notebook, bg=self.bg_main)
-        self.tab_gallery_frame = tk.Frame(self.notebook, bg=self.bg_main)
-        self.tab_prompt_helper_frame = tk.Frame(self.notebook, bg=self.bg_main)
-        self.tab_history_frame = tk.Frame(self.notebook, bg=self.bg_main)
+        self.generator_tab = GeneratorTab(self.main_container, self)
         
-        self.notebook.add(self.tab_generator_frame, text=" Generator ")
-        self.notebook.add(self.tab_gallery_frame, text=" Output Gallery ")
-        self.notebook.add(self.tab_prompt_helper_frame, text=" Prompt Helper ")
-        self.notebook.add(self.tab_history_frame, text=" Execution History ")
-        
-        self.generator_tab = GeneratorTab(self.tab_generator_frame, self)
-        self.gallery_tab = GalleryTab(self.tab_gallery_frame, self)
-        self.prompt_helper_tab = PromptHelperTab(self.tab_prompt_helper_frame, self)
-        self.history_tab = HistoryTab(self.tab_history_frame, self)
+        # Expose sub-tabs and right notebook for application-level access
+        self.gallery_tab = self.generator_tab.gallery_tab
+        self.prompt_helper_tab = self.generator_tab.prompt_helper_tab
+        self.history_tab = self.generator_tab.history_tab
+        self.notebook = self.generator_tab.right_notebook
 
     def build_command_list(self, generator_tab=None):
         if generator_tab is None:

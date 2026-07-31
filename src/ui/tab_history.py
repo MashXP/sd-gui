@@ -24,19 +24,19 @@ class HistoryTab:
         self.build_ui()
 
     def build_ui(self):
-        hist_header = tk.Frame(self.parent, bg=self.bg_main)
+        hist_header = tk.Frame(self.parent, bg=self.bg_card)
         hist_header.pack(fill=tk.X, padx=15, pady=(15, 8))
 
-        tk.Label(hist_header, text="Execution History Log", bg=self.bg_main,
+        tk.Label(hist_header, text="Execution History Log", bg=self.bg_card,
                  fg=self.text_primary, font=styles.FONT_HEADER).pack(side=tk.LEFT)
         tk.Label(hist_header,                  text="Check rows to delete | Ctrl+C: copy cell | Ctrl+Click: toggle | Shift+Click: range | Drag: area | Double-click: load into Generator",
-                 bg=self.bg_main, fg=self.text_secondary, font=styles.FONT_SMALL).pack(side=tk.LEFT, padx=15)
+                 bg=self.bg_card, fg=self.text_secondary, font=styles.FONT_SMALL).pack(side=tk.LEFT, padx=15)
 
-        btn_frame = tk.Frame(hist_header, bg=self.bg_main)
+        btn_frame = tk.Frame(hist_header, bg=self.bg_card)
         btn_frame.pack(side=tk.RIGHT)
 
         self.btn_record = tk.Button(
-            btn_frame, text="● Recording", fg="#34d399", bg=self.bg_main,
+            btn_frame, text="● Recording", fg="#34d399", bg=self.bg_card,
             font=styles.FONT_SMALL, bd=0, padx=8, cursor="hand2",
             activebackground=self.bg_card, activeforeground="#34d399",
             command=self.toggle_recording

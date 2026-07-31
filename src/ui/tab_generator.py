@@ -7,6 +7,9 @@ from tkinter import ttk, filedialog
 from PIL import Image, ImageTk
 import styles
 from ui.widgets import CollapsibleFrame
+from ui.tab_gallery import GalleryTab
+from ui.tab_prompt_helper import PromptHelperTab
+from ui.tab_history import HistoryTab
 
 class GeneratorTab:
     """Manages the main Generator tab layout, parameter sidebar, collapsible sections, and preview/logs."""
@@ -572,6 +575,21 @@ class GeneratorTab:
             pady=10
         )
         self.text_terminal.pack(fill=tk.BOTH, expand=True, padx=5, pady=(0, 5))
+
+        # Sub-tab 3: Output Gallery (Tab 2)
+        self.tab_gallery_frame = tk.Frame(self.right_notebook, bg=self.bg_card)
+        self.right_notebook.add(self.tab_gallery_frame, text="Output Gallery")
+        self.gallery_tab = GalleryTab(self.tab_gallery_frame, self.app)
+
+        # Sub-tab 4: Prompt Helper (Tab 3)
+        self.tab_prompt_helper_frame = tk.Frame(self.right_notebook, bg=self.bg_card)
+        self.right_notebook.add(self.tab_prompt_helper_frame, text="Prompt Helper")
+        self.prompt_helper_tab = PromptHelperTab(self.tab_prompt_helper_frame, self.app)
+
+        # Sub-tab 5: Execution History (Tab 4)
+        self.tab_history_frame = tk.Frame(self.right_notebook, bg=self.bg_card)
+        self.right_notebook.add(self.tab_history_frame, text="Execution History")
+        self.history_tab = HistoryTab(self.tab_history_frame, self.app)
 
         # Apply initial random seed toggle state
         self.on_random_seed_toggle()

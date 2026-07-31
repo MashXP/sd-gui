@@ -18,15 +18,15 @@ class PromptHelperTab:
         self.build_ui()
 
     def build_ui(self):
-        helper_header = tk.Frame(self.parent, bg=self.bg_main)
+        helper_header = tk.Frame(self.parent, bg=self.bg_card)
         helper_header.pack(fill=tk.X, padx=15, pady=(15, 8))
         
-        tk.Label(helper_header, text="Prompt Tag Helper", bg=self.bg_main, fg=self.text_primary, font=styles.FONT_HEADER).pack(side=tk.LEFT)
-        tk.Label(helper_header, text="Click any chip below to append to your active prompt", bg=self.bg_main, fg=self.text_secondary, font=styles.FONT_SMALL).pack(side=tk.LEFT, padx=15)
+        tk.Label(helper_header, text="Prompt Tag Helper", bg=self.bg_card, fg=self.text_primary, font=styles.FONT_HEADER).pack(side=tk.LEFT)
+        tk.Label(helper_header, text="Click any chip below to append to your active prompt", bg=self.bg_card, fg=self.text_secondary, font=styles.FONT_SMALL).pack(side=tk.LEFT, padx=15)
         
-        cat_canvas = tk.Canvas(self.parent, bg=self.bg_main, highlightthickness=0, bd=0)
+        cat_canvas = tk.Canvas(self.parent, bg=self.bg_card, highlightthickness=0, bd=0)
         cat_scroll = ttk.Scrollbar(self.parent, orient="vertical", command=cat_canvas.yview)
-        cat_frame = tk.Frame(cat_canvas, bg=self.bg_main)
+        cat_frame = tk.Frame(cat_canvas, bg=self.bg_card)
         
         cat_frame.bind("<Configure>", lambda e: cat_canvas.configure(scrollregion=cat_canvas.bbox("all")))
         canvas_win = cat_canvas.create_window((0, 0), window=cat_frame, anchor="nw")
