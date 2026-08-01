@@ -44,6 +44,7 @@ class DesktopManager:
         os.makedirs(PROFILES_DIR, exist_ok=True)
         os.makedirs(OUTPUT_DIR, exist_ok=True)
         os.makedirs(os.path.join(WORKSPACE_DIR, "models"), exist_ok=True)
+        os.makedirs(os.path.join(WORKSPACE_DIR, "lora"), exist_ok=True)
         
         self.WORKSPACE_DIR = WORKSPACE_DIR
         self.PROFILES_DIR = PROFILES_DIR
@@ -115,8 +116,10 @@ class DesktopManager:
         self.var_slg_scale = tk.StringVar(value="")
         self.var_skip_layers = tk.StringVar(value="")
         self.var_vae_tile_size = tk.StringVar(value="")
-        self.var_lora_dir = tk.StringVar(value="")
+        self.var_lora_dir = tk.StringVar(value="lora")
         self.var_lora_apply_mode = tk.StringVar(value="")
+        self.var_lora_enabled = tk.BooleanVar(value=False)
+        self.var_lora_strength = tk.StringVar(value="1.0")
         
         # Boolean advanced flags
         self.var_vae_tiling = tk.BooleanVar(value=True)
@@ -128,6 +131,7 @@ class DesktopManager:
         
         self.profile_list = []
         self.scanned_models = []
+        self.scanned_loras = []
         
         self.build_ui()
         
@@ -151,8 +155,22 @@ class DesktopManager:
                         self.scanned_models.append(rel_path)
         self.scanned_models.sort()
         
+        self.scanned_loras = []
+        lora_dir = os.path.join(WORKSPACE_DIR, "lora")
+        if os.path.exists(lora_dir):
+            for root, dirs, files in os.walk(lora_dir):
+                for file in files:
+                    if file.endswith(('.safetensors', '.gguf', '.ckpt', '.pt')) and not file.startswith("put_"):
+                        full_path = os.path.join(root, file)
+                        rel_path = os.path.relpath(full_path, WORKSPACE_DIR)
+                        self.scanned_loras.append(rel_path)
+        self.scanned_loras.sort()
+        
         for combo in [self.generator_tab.combo_model, self.generator_tab.combo_t5xxl, self.generator_tab.combo_llm, self.generator_tab.combo_vae]:
             combo['values'] = [""] + self.scanned_models
+            
+        if hasattr(self.generator_tab, 'combo_lora_dir'):
+            self.generator_tab.combo_lora_dir['values'] = ["", "lora"] + self.scanned_loras
 
     def load_profiles_list(self):
         self.profile_list = [f[:-4] for f in os.listdir(PROFILES_DIR) if f.endswith(".env")]
@@ -210,6 +228,16 @@ class DesktopManager:
             cmd += ["--backend", backend]
             
         prompt = generator_tab.entry_prompt.get("1.0", "end-1c").strip()
+        if self.var_lora_enabled.get():
+            lora_val = self.var_lora_dir.get().strip()
+            strength_val = self.var_lora_strength.get().strip() or "1.0"
+            if lora_val:
+                full_lora = os.path.join(WORKSPACE_DIR, lora_val) if not os.path.isabs(lora_val) else lora_val
+                if os.path.isfile(full_lora):
+                    lora_stem = os.path.splitext(os.path.basename(lora_val))[0]
+                    if "<lora:" not in prompt.lower():
+                        prompt = f"{prompt} <lora:{lora_stem}:{strength_val}>".strip()
+                    
         if prompt:
             cmd += ["-p", prompt]
             
@@ -306,13 +334,17 @@ class DesktopManager:
         if vsize:
             cmd += ["--vae-tile-size", vsize]
             
-        lora_dir = self.var_lora_dir.get().strip()
-        if lora_dir:
-            cmd += ["--lora-model-dir", lora_dir]
-            
-        lora_mode = self.var_lora_apply_mode.get().strip()
-        if lora_mode:
-            cmd += ["--lora-apply-mode", lora_mode]
+        if self.var_lora_enabled.get():
+            lora_dir = self.var_lora_dir.get().strip()
+            if lora_dir:
+                full_lora = os.path.join(WORKSPACE_DIR, lora_dir) if not os.path.isabs(lora_dir) else lora_dir
+                if os.path.isfile(full_lora):
+                    lora_dir = os.path.dirname(lora_dir) or "."
+                cmd += ["--lora-model-dir", lora_dir]
+                
+            lora_mode = self.var_lora_apply_mode.get().strip()
+            if lora_mode:
+                cmd += ["--lora-apply-mode", lora_mode]
             
         if self.var_vae_tiling.get():
             cmd += ["--vae-tiling"]
@@ -404,6 +436,9 @@ class DesktopManager:
         if "VAE_TILE_SIZE" in config: self.var_vae_tile_size.set(config["VAE_TILE_SIZE"])
         if "LORA_MODEL_DIR" in config: self.var_lora_dir.set(config["LORA_MODEL_DIR"])
         if "LORA_APPLY_MODE" in config: self.var_lora_apply_mode.set(config["LORA_APPLY_MODE"])
+        if "LORA_ENABLED" in config: self.var_lora_enabled.set(config["LORA_ENABLED"].lower() == "true")
+        if "LORA_STRENGTH" in config: self.var_lora_strength.set(config["LORA_STRENGTH"])
+        if "LORA_MULTIPLIER" in config: self.var_lora_strength.set(config["LORA_MULTIPLIER"])
         
         if "CIRCULAR" in config: self.var_circular.set(config["CIRCULAR"].lower() == "true")
         if "DISABLE_IMAGE_METADATA" in config: self.var_disable_metadata.set(config["DISABLE_IMAGE_METADATA"].lower() == "true")
@@ -473,6 +508,9 @@ class DesktopManager:
             "VAE_TILE_SIZE": self.var_vae_tile_size.get().strip(),
             "LORA_MODEL_DIR": self.var_lora_dir.get().strip(),
             "LORA_APPLY_MODE": self.var_lora_apply_mode.get().strip(),
+            "LORA_ENABLED": str(self.var_lora_enabled.get()).lower(),
+            "LORA_STRENGTH": self.var_lora_strength.get().strip(),
+            "LORA_MULTIPLIER": self.var_lora_strength.get().strip(),
             "CIRCULAR": str(self.var_circular.get()).lower(),
             "DISABLE_IMAGE_METADATA": str(self.var_disable_metadata.get()).lower(),
             "OUTPUT": out_val,

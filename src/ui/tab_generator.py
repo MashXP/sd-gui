@@ -72,6 +72,8 @@ class GeneratorTab:
         self.var_vae_tile_size = app.var_vae_tile_size
         self.var_lora_dir = app.var_lora_dir
         self.var_lora_apply_mode = app.var_lora_apply_mode
+        self.var_lora_enabled = app.var_lora_enabled
+        self.var_lora_strength = app.var_lora_strength
         
         self.var_vae_tiling = app.var_vae_tiling
         self.var_vae_conv_direct = app.var_vae_conv_direct
@@ -154,27 +156,43 @@ class GeneratorTab:
         row += 1
         
         tk.Label(scroll_frame, text="Diffusion Model", bg=self.bg_card, fg=self.text_secondary).grid(row=row, column=0, sticky='w', pady=6)
-        self.combo_model = ttk.Combobox(scroll_frame, textvariable=self.var_model, style='TCombobox')
-        self.combo_model.grid(row=row, column=1, sticky='we', pady=6, padx=(10, 0))
+        model_frame = tk.Frame(scroll_frame, bg=self.bg_card)
+        model_frame.grid(row=row, column=1, sticky='we', pady=6, padx=(10, 0))
+        self.combo_model = ttk.Combobox(model_frame, textvariable=self.var_model, style='TCombobox')
+        self.combo_model.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 4), ipady=3)
         setup_filterable_combobox(self.combo_model, lambda: self.app.scanned_models, lambda e=None: self.update_cmd_preview())
+        btn_browse_model = ttk.Button(model_frame, text=">", width=2, command=self.browse_model)
+        btn_browse_model.pack(side=tk.LEFT)
         row += 1
         
         tk.Label(scroll_frame, text="Text Encoder (T5XXL)", bg=self.bg_card, fg=self.text_secondary).grid(row=row, column=0, sticky='w', pady=6)
-        self.combo_t5xxl = ttk.Combobox(scroll_frame, textvariable=self.var_t5xxl, style='TCombobox')
-        self.combo_t5xxl.grid(row=row, column=1, sticky='we', pady=6, padx=(10, 0))
+        t5_frame = tk.Frame(scroll_frame, bg=self.bg_card)
+        t5_frame.grid(row=row, column=1, sticky='we', pady=6, padx=(10, 0))
+        self.combo_t5xxl = ttk.Combobox(t5_frame, textvariable=self.var_t5xxl, style='TCombobox')
+        self.combo_t5xxl.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 4), ipady=3)
         setup_filterable_combobox(self.combo_t5xxl, lambda: self.app.scanned_models, lambda e=None: self.update_cmd_preview())
+        btn_browse_t5xxl = ttk.Button(t5_frame, text=">", width=2, command=self.browse_t5xxl)
+        btn_browse_t5xxl.pack(side=tk.LEFT)
         row += 1
         
         tk.Label(scroll_frame, text="Text Encoder (LLM)", bg=self.bg_card, fg=self.text_secondary).grid(row=row, column=0, sticky='w', pady=6)
-        self.combo_llm = ttk.Combobox(scroll_frame, textvariable=self.var_llm, style='TCombobox')
-        self.combo_llm.grid(row=row, column=1, sticky='we', pady=6, padx=(10, 0))
+        llm_frame = tk.Frame(scroll_frame, bg=self.bg_card)
+        llm_frame.grid(row=row, column=1, sticky='we', pady=6, padx=(10, 0))
+        self.combo_llm = ttk.Combobox(llm_frame, textvariable=self.var_llm, style='TCombobox')
+        self.combo_llm.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 4), ipady=3)
         setup_filterable_combobox(self.combo_llm, lambda: self.app.scanned_models, lambda e=None: self.update_cmd_preview())
+        btn_browse_llm = ttk.Button(llm_frame, text=">", width=2, command=self.browse_llm)
+        btn_browse_llm.pack(side=tk.LEFT)
         row += 1
         
         tk.Label(scroll_frame, text="VAE Decoder", bg=self.bg_card, fg=self.text_secondary).grid(row=row, column=0, sticky='w', pady=6)
-        self.combo_vae = ttk.Combobox(scroll_frame, textvariable=self.var_vae, style='TCombobox')
-        self.combo_vae.grid(row=row, column=1, sticky='we', pady=6, padx=(10, 0))
+        vae_frame = tk.Frame(scroll_frame, bg=self.bg_card)
+        vae_frame.grid(row=row, column=1, sticky='we', pady=6, padx=(10, 0))
+        self.combo_vae = ttk.Combobox(vae_frame, textvariable=self.var_vae, style='TCombobox')
+        self.combo_vae.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 4), ipady=3)
         setup_filterable_combobox(self.combo_vae, lambda: self.app.scanned_models, lambda e=None: self.update_cmd_preview())
+        btn_browse_vae = ttk.Button(vae_frame, text=">", width=2, command=self.browse_vae)
+        btn_browse_vae.pack(side=tk.LEFT)
         row += 1
         
         tk.Label(scroll_frame, text="Prompt", bg=self.bg_card, fg=self.text_secondary).grid(row=row, column=0, sticky='nw', pady=6)
@@ -362,15 +380,33 @@ class GeneratorTab:
         f_lora.columnconfigure(1, weight=1)
         r_sub = 0
 
-        tk.Label(f_lora, text="LoRA Directory", bg=self.bg_card, fg=self.text_secondary).grid(row=r_sub, column=0, sticky='w', pady=4)
+        tk.Label(f_lora, text="Enable / Strength", bg=self.bg_card, fg=self.text_secondary).grid(row=r_sub, column=0, sticky='w', pady=4)
+        lora_top_frame = tk.Frame(f_lora, bg=self.bg_card)
+        lora_top_frame.grid(row=r_sub, column=1, sticky='we', pady=4, padx=(8, 0))
+
+        chk_lora_en = tk.Checkbutton(
+            lora_top_frame, text="Enable LoRA", variable=self.var_lora_enabled,
+            bg=self.bg_card, fg=self.text_primary, selectcolor=self.bg_main,
+            activebackground=self.bg_card, activeforeground=self.text_primary,
+            font=styles.FONT_MAIN, command=self.update_cmd_preview
+        )
+        chk_lora_en.pack(side=tk.LEFT, padx=(0, 15))
+
+        tk.Label(lora_top_frame, text="Multiplier", bg=self.bg_card, fg=self.text_secondary).pack(side=tk.LEFT, padx=(0, 5))
+        entry_lora_str = styles.create_custom_entry(lora_top_frame, textvariable=self.var_lora_strength, width=6)
+        entry_lora_str.pack(side=tk.LEFT, ipady=3)
+        entry_lora_str.bind("<KeyRelease>", lambda e: self.update_cmd_preview())
+        r_sub += 1
+
+        tk.Label(f_lora, text="LoRA Directory / Model", bg=self.bg_card, fg=self.text_secondary).grid(row=r_sub, column=0, sticky='w', pady=4)
         lora_frame = tk.Frame(f_lora, bg=self.bg_card)
         lora_frame.grid(row=r_sub, column=1, sticky='we', pady=4, padx=(8, 0))
         
-        entry_lora = styles.create_custom_entry(lora_frame, textvariable=self.var_lora_dir)
-        entry_lora.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5), ipady=3)
-        entry_lora.bind("<KeyRelease>", lambda e: self.update_cmd_preview())
+        self.combo_lora_dir = ttk.Combobox(lora_frame, textvariable=self.var_lora_dir, style='TCombobox')
+        self.combo_lora_dir.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5), ipady=3)
+        setup_filterable_combobox(self.combo_lora_dir, lambda: ["lora"] + self.app.scanned_loras, lambda e=None: self.update_cmd_preview())
         
-        btn_browse_lora = ttk.Button(lora_frame, text="Browse...", command=self.browse_lora_dir)
+        btn_browse_lora = ttk.Button(lora_frame, text=">", width=2, command=self.browse_lora_dir)
         btn_browse_lora.pack(side=tk.LEFT)
         r_sub += 1
 
@@ -397,7 +433,7 @@ class GeneratorTab:
         entry_init.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5), ipady=3)
         entry_init.bind("<KeyRelease>", lambda e: self.update_cmd_preview())
         
-        btn_browse_init = ttk.Button(init_frame, text="Browse...", command=self.browse_init_image)
+        btn_browse_init = ttk.Button(init_frame, text=">", width=2, command=self.browse_init_image)
         btn_browse_init.pack(side=tk.LEFT)
         r_sub += 1
 
@@ -742,7 +778,52 @@ class GeneratorTab:
         self.parent.update_idletasks()
         self.form_canvas.configure(scrollregion=self.form_canvas.bbox("all"))
 
+    def browse_model(self):
+        filename = filedialog.askopenfilename(
+            title="Select Diffusion Model",
+            filetypes=[("Model Files", "*.safetensors *.gguf *.ckpt"), ("All Files", "*.*")]
+        )
+        if filename:
+            if filename.startswith(self.app.WORKSPACE_DIR):
+                filename = os.path.relpath(filename, self.app.WORKSPACE_DIR)
+            self.var_model.set(filename)
+            self.update_cmd_preview()
+
+    def browse_t5xxl(self):
+        filename = filedialog.askopenfilename(
+            title="Select T5XXL Text Encoder",
+            filetypes=[("Model Files", "*.safetensors *.gguf *.ckpt"), ("All Files", "*.*")]
+        )
+        if filename:
+            if filename.startswith(self.app.WORKSPACE_DIR):
+                filename = os.path.relpath(filename, self.app.WORKSPACE_DIR)
+            self.var_t5xxl.set(filename)
+            self.update_cmd_preview()
+
+    def browse_llm(self):
+        filename = filedialog.askopenfilename(
+            title="Select LLM Text Encoder",
+            filetypes=[("Model Files", "*.safetensors *.gguf *.ckpt"), ("All Files", "*.*")]
+        )
+        if filename:
+            if filename.startswith(self.app.WORKSPACE_DIR):
+                filename = os.path.relpath(filename, self.app.WORKSPACE_DIR)
+            self.var_llm.set(filename)
+            self.update_cmd_preview()
+
+    def browse_vae(self):
+        filename = filedialog.askopenfilename(
+            title="Select VAE Decoder",
+            filetypes=[("Model Files", "*.safetensors *.gguf *.ckpt"), ("All Files", "*.*")]
+        )
+        if filename:
+            if filename.startswith(self.app.WORKSPACE_DIR):
+                filename = os.path.relpath(filename, self.app.WORKSPACE_DIR)
+            self.var_vae.set(filename)
+            self.update_cmd_preview()
+
     def browse_init_image(self):
+
         filename = filedialog.askopenfilename(
             title="Select Input Image for img2img",
             filetypes=[("Image Files", "*.png *.jpg *.jpeg *.webp *.bmp"), ("All Files", "*.*")]

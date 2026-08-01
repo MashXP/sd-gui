@@ -6,6 +6,10 @@ __pycache__/
 models/*
 !models/put_models_here
 
+# Ignore all lora files except the placeholder
+lora/*
+!lora/put_loras_here
+
 # Ignore all profiles except anima, bonsai example .env
 profiles/*
 !profiles/anima.env
