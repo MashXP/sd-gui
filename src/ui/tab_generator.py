@@ -228,13 +228,15 @@ class GeneratorTab:
         size_frame = tk.Frame(scroll_frame, bg=self.bg_card)
         size_frame.grid(row=row, column=1, sticky='we', pady=6, padx=(10, 0))
         
-        combo_w = ttk.Combobox(size_frame, textvariable=self.var_width, values=["384", "512", "704", "768", "832", "896", "1024"], width=7, state="readonly", style='TCombobox')
+        combo_w = ttk.Combobox(size_frame, textvariable=self.var_width, values=["384", "512", "704", "768", "832", "896", "1024"], width=7, style='TCombobox')
         combo_w.pack(side=tk.LEFT, padx=(0, 8))
         combo_w.bind("<<ComboboxSelected>>", lambda e: self.update_cmd_preview())
+        combo_w.bind("<KeyRelease>", lambda e: self.update_cmd_preview())
         
-        combo_h = ttk.Combobox(size_frame, textvariable=self.var_height, values=["384", "480", "512", "704", "768", "896", "1024"], width=7, state="readonly", style='TCombobox')
+        combo_h = ttk.Combobox(size_frame, textvariable=self.var_height, values=["384", "480", "512", "704", "768", "896", "1024"], width=7, style='TCombobox')
         combo_h.pack(side=tk.LEFT)
         combo_h.bind("<<ComboboxSelected>>", lambda e: self.update_cmd_preview())
+        combo_h.bind("<KeyRelease>", lambda e: self.update_cmd_preview())
         row += 1
         
         tk.Label(scroll_frame, text="Steps / CFG Scale", bg=self.bg_card, fg=self.text_secondary).grid(row=row, column=0, sticky='w', pady=6)
