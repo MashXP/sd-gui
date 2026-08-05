@@ -2,6 +2,7 @@ import os
 import sys
 import re
 import time
+import shlex
 import subprocess
 import queue
 import tkinter as tk
@@ -379,7 +380,7 @@ class DesktopManager:
 
     def copy_command(self):
         cmd = self.build_command_list()
-        self.copy_to_clipboard(" ".join(cmd))
+        self.copy_to_clipboard(shlex.join(cmd))
         self.show_toast("Command copied to clipboard!")
 
     def on_profile_selected(self, event):
@@ -613,7 +614,7 @@ class DesktopManager:
             return
             
         self.clear_logs()
-        self.generator_tab.text_terminal.insert(tk.END, f"Launching subprocess: {' '.join(cmd)}\n\n")
+        self.generator_tab.text_terminal.insert(tk.END, f"Launching subprocess: {shlex.join(cmd)}\n\n")
         
         self.generator_tab.btn_start.configure(state=tk.DISABLED, bg="#1f2937", fg=self.text_secondary)
         self.generator_tab.btn_stop.configure(state=tk.NORMAL, bg=styles.BTN_RED, fg="#ffffff", cursor="hand2")
@@ -651,7 +652,7 @@ class DesktopManager:
                         
                         prompt = self.generator_tab.entry_prompt.get("1.0", "end-1c").strip()
                         neg_p = self.generator_tab.entry_neg_prompt.get("1.0", "end-1c").strip()
-                        cmd_str = " ".join(self.build_command_list())
+                        cmd_str = shlex.join(self.build_command_list())
                         out_file = self.var_output.get().strip()
                         if not out_file.startswith("output/"):
                             out_file = f"output/{out_file}"

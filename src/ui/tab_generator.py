@@ -1,6 +1,7 @@
 import os
 import sys
 import glob
+import shlex
 import subprocess
 import tkinter as tk
 from tkinter import ttk, filedialog
@@ -871,7 +872,7 @@ class GeneratorTab:
         if len(preview_cmd) > 0:
             preview_cmd[0] = self.var_binary.get()
             
-        cmd_string = " ".join(preview_cmd)
+        cmd_string = shlex.join(preview_cmd)
         self.text_cmd_preview.delete("1.0", tk.END)
         self.text_cmd_preview.insert("1.0", cmd_string)
 
