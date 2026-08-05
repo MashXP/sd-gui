@@ -528,6 +528,49 @@ class DesktopManager:
         self.generator_tab.combo_profile.set(name)
         self.show_toast(f"Profile '{name}' saved!")
 
+    def rename_profile(self):
+        current = self.generator_tab.combo_profile.get().strip()
+        new_name = self.generator_tab.entry_save_name.get().strip()
+        if not current:
+            messagebox.showwarning("No Profile Selected", "Select a profile to rename.")
+            return
+        if not new_name:
+            messagebox.showwarning("Name Required", "Enter a new profile name first.")
+            return
+        if new_name == current:
+            return
+        old_path = os.path.join(PROFILES_DIR, f"{current}.env")
+        new_path = os.path.join(PROFILES_DIR, f"{new_name}.env")
+        if not os.path.exists(old_path):
+            messagebox.showerror("Error", f"Profile file not found:\n{old_path}")
+            return
+        if os.path.exists(new_path):
+            messagebox.showwarning("Name Exists", f"A profile named '{new_name}' already exists.")
+            return
+        os.rename(old_path, new_path)
+        self.load_profiles_list()
+        self.generator_tab.combo_profile.set(new_name)
+        self.generator_tab.entry_save_name.delete(0, tk.END)
+        self.generator_tab.entry_save_name.insert(0, new_name)
+        self.show_toast(f"Profile renamed to '{new_name}'!")
+
+    def delete_profile(self):
+        name = self.generator_tab.combo_profile.get().strip()
+        if not name:
+            messagebox.showwarning("No Profile Selected", "Select a profile to delete.")
+            return
+        profile_path = os.path.join(PROFILES_DIR, f"{name}.env")
+        if not os.path.exists(profile_path):
+            messagebox.showerror("Error", f"Profile file not found:\n{profile_path}")
+            return
+        if not messagebox.askyesno("Delete Profile", f"Delete profile '{name}'?\nThis cannot be undone."):
+            return
+        os.remove(profile_path)
+        self.load_profiles_list()
+        self.generator_tab.combo_profile.set("")
+        self.generator_tab.entry_save_name.delete(0, tk.END)
+        self.show_toast(f"Profile '{name}' deleted!")
+
     def clear_logs(self):
         self.generator_tab.text_terminal.delete("1.0", tk.END)
 

@@ -110,8 +110,14 @@ class GeneratorTab:
         self.entry_save_name = styles.create_custom_entry(profile_frame, width=14)
         self.entry_save_name.pack(side=tk.LEFT, padx=6, ipady=3)
         
-        btn_save = ttk.Button(profile_frame, text="Save Profile", command=self.app.save_profile)
+        btn_save = ttk.Button(profile_frame, text="Save", command=self.app.save_profile)
         btn_save.pack(side=tk.LEFT, padx=6)
+        
+        btn_rename = ttk.Button(profile_frame, text="Rename", command=self.app.rename_profile)
+        btn_rename.pack(side=tk.LEFT, padx=6)
+        
+        btn_delete = ttk.Button(profile_frame, text="Delete", command=self.app.delete_profile)
+        btn_delete.pack(side=tk.LEFT, padx=6)
         
         div = tk.Frame(left_frame, height=1, bg=self.border_color)
         div.pack(fill=tk.X, padx=15, pady=8)
