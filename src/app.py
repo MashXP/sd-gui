@@ -147,7 +147,7 @@ class DesktopManager:
         self.scanned_models = []
         models_dir = os.path.join(WORKSPACE_DIR, "models")
         if os.path.exists(models_dir):
-            for root, dirs, files in os.walk(models_dir):
+            for root, dirs, files in os.walk(models_dir, followlinks=True):
                 for file in files:
                     if file.endswith(('.safetensors', '.gguf', '.ckpt')):
                         full_path = os.path.join(root, file)
@@ -158,7 +158,7 @@ class DesktopManager:
         self.scanned_loras = []
         lora_dir = os.path.join(WORKSPACE_DIR, "lora")
         if os.path.exists(lora_dir):
-            for root, dirs, files in os.walk(lora_dir):
+            for root, dirs, files in os.walk(lora_dir, followlinks=True):
                 for file in files:
                     if file.endswith(('.safetensors', '.gguf', '.ckpt', '.pt')) and not file.startswith("put_"):
                         full_path = os.path.join(root, file)
