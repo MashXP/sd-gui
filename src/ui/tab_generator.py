@@ -11,6 +11,7 @@ from ui.widgets import CollapsibleFrame, setup_filterable_combobox
 from ui.tab_gallery import GalleryTab
 from ui.tab_prompt_helper import PromptHelperTab
 from ui.tab_history import HistoryTab
+from art_styles import ART_STYLES
 
 class GeneratorTab:
     """Manages the main Generator tab layout, parameter sidebar, collapsible sections, and preview/logs."""
@@ -200,6 +201,17 @@ class GeneratorTab:
         setup_filterable_combobox(self.combo_vae, lambda: self.app.scanned_models, lambda e=None: self.update_cmd_preview())
         btn_browse_vae = ttk.Button(vae_frame, text=">", width=2, command=self.browse_vae)
         btn_browse_vae.pack(side=tk.LEFT)
+        row += 1
+        
+        # Art Style Row
+        tk.Label(scroll_frame, text="Art Style", bg=self.bg_card, fg=self.text_secondary).grid(row=row, column=0, sticky='w', pady=6)
+        art_style_frame = tk.Frame(scroll_frame, bg=self.bg_card)
+        art_style_frame.grid(row=row, column=1, sticky='we', pady=6, padx=(10, 0))
+        
+        art_style_names = ["None"] + [name for name, _, _ in ART_STYLES]
+        self.combo_art_style = ttk.Combobox(art_style_frame, textvariable=self.app.var_art_style, values=art_style_names, state="readonly", style='TCombobox')
+        self.combo_art_style.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        self.combo_art_style.bind("<<ComboboxSelected>>", lambda e: self.update_cmd_preview())
         row += 1
         
         tk.Label(scroll_frame, text="Prompt", bg=self.bg_card, fg=self.text_secondary).grid(row=row, column=0, sticky='nw', pady=6)

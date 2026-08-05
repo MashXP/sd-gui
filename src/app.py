@@ -17,6 +17,7 @@ from ui.tab_generator import GeneratorTab
 from ui.tab_gallery import GalleryTab
 from ui.tab_prompt_helper import PromptHelperTab
 from ui.tab_history import HistoryTab
+from art_styles import ART_STYLES, apply_art_style_to_prompt
 
 WORKSPACE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PROFILES_DIR = os.path.join(WORKSPACE_DIR, "profiles")
@@ -130,6 +131,9 @@ class DesktopManager:
         self.var_circular = tk.BooleanVar(value=False)
         self.var_disable_metadata = tk.BooleanVar(value=False)
         
+        # Art Style variable ("None" means disabled)
+        self.var_art_style = tk.StringVar(value="None")
+        
         self.profile_list = []
         self.scanned_models = []
         self.scanned_loras = []
@@ -229,6 +233,10 @@ class DesktopManager:
             cmd += ["--backend", backend]
             
         prompt = generator_tab.entry_prompt.get("1.0", "end-1c").strip()
+        art_style = self.var_art_style.get().strip()
+        if art_style and art_style != "None":
+            prompt = apply_art_style_to_prompt(art_style, prompt)
+
         if self.var_lora_enabled.get():
             lora_val = self.var_lora_dir.get().strip()
             strength_val = self.var_lora_strength.get().strip() or "1.0"
