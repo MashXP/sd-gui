@@ -310,17 +310,15 @@ class DesktopManager:
         if self.var_hires.get():
             cmd += ["--hires"]
             
-        hscale = self.var_hires_scale.get().strip()
-        if hscale:
+            hscale = self.var_hires_scale.get().strip() or "2.0"
             cmd += ["--hires-scale", hscale]
             
-        hdenoise = self.var_hires_denoise.get().strip()
-        if hdenoise:
+            hdenoise = self.var_hires_denoise.get().strip() or "0.7"
             cmd += ["--hires-denoising-strength", hdenoise]
             
-        hsteps = self.var_hires_steps.get().strip()
-        if hsteps:
-            cmd += ["--hires-steps", hsteps]
+            hsteps = self.var_hires_steps.get().strip()
+            if hsteps:
+                cmd += ["--hires-steps", hsteps]
             
         slg = self.var_slg_scale.get().strip()
         if slg:
