@@ -7,11 +7,17 @@ import tkinter as tk
 from tkinter import ttk, filedialog
 from PIL import Image, ImageTk
 import styles
+import resolution
 from ui.widgets import CollapsibleFrame, setup_filterable_combobox
 from ui.tab_gallery import GalleryTab
 from ui.tab_prompt_helper import PromptHelperTab
 from ui.tab_history import HistoryTab
 from art_styles import ART_STYLES
+
+# Megapixel budget stepping, matching ComfyUI's ResolutionSelector range
+MP_MIN = 0.1
+MP_MAX = 16.0
+MP_STEP = 0.1
 
 class GeneratorTab:
     """Manages the main Generator tab layout, parameter sidebar, collapsible sections, and preview/logs."""
@@ -43,6 +49,9 @@ class GeneratorTab:
         self.var_vae = app.var_vae
         self.var_width = app.var_width
         self.var_height = app.var_height
+        self.var_aspect_ratio = app.var_aspect_ratio
+        self.var_megapixels = app.var_megapixels
+        self.var_res_multiple = app.var_res_multiple
         self.var_steps = app.var_steps
         self.var_cfg = app.var_cfg
         self.var_guidance = app.var_guidance
@@ -280,13 +289,56 @@ class GeneratorTab:
         
         combo_w = ttk.Combobox(size_frame, textvariable=self.var_width, values=["384", "512", "704", "768", "832", "896", "1024"], width=7, style='TCombobox')
         combo_w.pack(side=tk.LEFT, padx=(0, 8))
-        combo_w.bind("<<ComboboxSelected>>", lambda e: self.update_cmd_preview())
-        combo_w.bind("<KeyRelease>", lambda e: self.update_cmd_preview())
+        combo_w.bind("<<ComboboxSelected>>", lambda e: self.on_size_change())
+        combo_w.bind("<KeyRelease>", lambda e: self.on_size_change())
         
         combo_h = ttk.Combobox(size_frame, textvariable=self.var_height, values=["384", "480", "512", "704", "768", "896", "1024"], width=7, style='TCombobox')
         combo_h.pack(side=tk.LEFT)
-        combo_h.bind("<<ComboboxSelected>>", lambda e: self.update_cmd_preview())
-        combo_h.bind("<KeyRelease>", lambda e: self.update_cmd_preview())
+        combo_h.bind("<<ComboboxSelected>>", lambda e: self.on_size_change())
+        combo_h.bind("<KeyRelease>", lambda e: self.on_size_change())
+        row += 1
+        
+        # Resolution picker: aspect ratio + megapixel budget -> width/height
+        # Split across two rows; the sidebar is too narrow to fit the combobox,
+        # the MP stepper and the step field on a single line.
+        tk.Label(scroll_frame, text="Aspect Ratio", bg=self.bg_card, fg=self.text_secondary).grid(row=row, column=0, sticky='w', pady=6)
+        res_frame = tk.Frame(scroll_frame, bg=self.bg_card)
+        res_frame.grid(row=row, column=1, sticky='we', pady=6, padx=(10, 0))
+        
+        self.combo_aspect_ratio = ttk.Combobox(
+            res_frame, textvariable=self.var_aspect_ratio,
+            values=resolution.ASPECT_RATIO_LABELS, state="readonly",
+            style='TCombobox'
+        )
+        self.combo_aspect_ratio.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=3)
+        self.combo_aspect_ratio.bind("<<ComboboxSelected>>", lambda e: self.on_resolution_change())
+        row += 1
+        
+        tk.Label(scroll_frame, text="Resolution", bg=self.bg_card, fg=self.text_secondary).grid(row=row, column=0, sticky='w', pady=6)
+        mp_frame = tk.Frame(scroll_frame, bg=self.bg_card)
+        mp_frame.grid(row=row, column=1, sticky='we', pady=6, padx=(10, 0))
+        
+        entry_mp = styles.create_custom_entry(mp_frame, textvariable=self.var_megapixels, width=5)
+        entry_mp.pack(side=tk.LEFT, ipady=3)
+        entry_mp.bind("<KeyRelease>", lambda e: self.on_resolution_change())
+        entry_mp.bind("<FocusOut>", lambda e: self.on_resolution_change())
+        
+        btn_mp_down = ttk.Button(mp_frame, text="-", width=2, command=lambda: self.step_megapixels(-MP_STEP))
+        btn_mp_down.pack(side=tk.LEFT, padx=(3, 2))
+        btn_mp_up = ttk.Button(mp_frame, text="+", width=2, command=lambda: self.step_megapixels(MP_STEP))
+        btn_mp_up.pack(side=tk.LEFT, padx=(0, 6))
+        
+        tk.Label(mp_frame, text="MP", bg=self.bg_card, fg=self.text_secondary, font=styles.FONT_SMALL).pack(side=tk.LEFT, padx=(0, 10))
+        
+        entry_mult = styles.create_custom_entry(mp_frame, textvariable=self.var_res_multiple, width=4)
+        entry_mult.pack(side=tk.LEFT, ipady=3)
+        entry_mult.bind("<KeyRelease>", lambda e: self.on_resolution_change())
+        entry_mult.bind("<FocusOut>", lambda e: self.on_resolution_change())
+        
+        tk.Label(mp_frame, text="/ step", bg=self.bg_card, fg=self.text_secondary, font=styles.FONT_SMALL).pack(side=tk.LEFT, padx=(4, 0))
+        
+        self.label_mp_readout = tk.Label(mp_frame, text="", bg=self.bg_card, fg=self.accent_blue, font=styles.FONT_SMALL)
+        self.label_mp_readout.pack(side=tk.RIGHT)
         row += 1
         
         tk.Label(scroll_frame, text="Steps / CFG Scale", bg=self.bg_card, fg=self.text_secondary).grid(row=row, column=0, sticky='w', pady=6)
@@ -815,6 +867,9 @@ class GeneratorTab:
         # Apply initial random seed toggle state
         self.on_random_seed_toggle()
 
+        # Show the megapixel readout for the starting width/height
+        self.update_megapixel_readout()
+
         # Select Output (Tab 0) as default
         self.right_notebook.select(0)
 
@@ -1096,6 +1151,68 @@ class GeneratorTab:
             self.app.roll_seed()
         else:
             self.update_cmd_preview()
+
+    def step_megapixels(self, delta):
+        """Nudges the megapixel budget by one step, clamped to the valid range.
+
+        Tolerant of a blank or non-numeric field by restarting from MP_MIN, so
+        the buttons always move somewhere sensible.
+        """
+        try:
+            current = float(self.var_megapixels.get().strip())
+        except (TypeError, ValueError):
+            current = MP_MIN
+        stepped = round(current + delta, 2)
+        stepped = max(MP_MIN, min(MP_MAX, stepped))
+        self.var_megapixels.set(f"{stepped:.1f}")
+        self.on_resolution_change()
+
+    def on_size_change(self, event=None):
+        """Manual width/height edits refresh the megapixel readout."""
+        self.update_megapixel_readout()
+        self.update_cmd_preview()
+
+    def on_resolution_change(self, event=None):
+        """Recomputes width/height from the aspect ratio and megapixel budget.
+
+        The "Custom" aspect ratio is a no-op so manually typed sizes are never
+        silently overwritten.
+        """
+        label = self.var_aspect_ratio.get()
+        if label == resolution.CUSTOM or not label:
+            self.update_megapixel_readout()
+            self.update_cmd_preview()
+            return
+
+        try:
+            multiple = int(float(self.var_res_multiple.get().strip() or 8))
+        except (TypeError, ValueError):
+            multiple = 8
+        if multiple < 1:
+            multiple = 1
+
+        try:
+            width, height = resolution.resolution_from_megapixels(
+                label, self.var_megapixels.get().strip() or 1.0, multiple
+            )
+        except ValueError:
+            return
+
+        self.var_width.set(str(width))
+        self.var_height.set(str(height))
+        # Readout last, so it reflects the dimensions just written above.
+        self.update_megapixel_readout()
+        self.update_cmd_preview()
+
+    def update_megapixel_readout(self):
+        """Shows the megapixels actually produced by the current width/height."""
+        if not hasattr(self, "label_mp_readout"):
+            return
+        mp = resolution.megapixels_of(self.var_width.get(), self.var_height.get())
+        if mp <= 0:
+            self.label_mp_readout.config(text="")
+        else:
+            self.label_mp_readout.config(text=f"= {mp:.2f} MP")
 
     def on_prompt_change(self, event=None):
         self.update_cmd_preview()

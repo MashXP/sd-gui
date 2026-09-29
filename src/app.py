@@ -97,6 +97,10 @@ class DesktopManager:
         self.var_vae = tk.StringVar()
         self.var_width = tk.StringVar(value="768")
         self.var_height = tk.StringVar(value="768")
+        # Resolution picker: aspect ratio drives width/height from a pixel budget
+        self.var_aspect_ratio = tk.StringVar(value="Custom")
+        self.var_megapixels = tk.StringVar(value="1.0")
+        self.var_res_multiple = tk.StringVar(value="8")
         self.var_steps = tk.StringVar(value="20")
         self.var_cfg = tk.StringVar(value="6.0")
         self.var_guidance = tk.StringVar(value="")
@@ -479,6 +483,9 @@ class DesktopManager:
         
         if "WIDTH" in config: self.var_width.set(config["WIDTH"])
         if "HEIGHT" in config: self.var_height.set(config["HEIGHT"])
+        if "ASPECT_RATIO" in config: self.var_aspect_ratio.set(config["ASPECT_RATIO"])
+        if "MEGAPIXELS" in config: self.var_megapixels.set(config["MEGAPIXELS"])
+        if "RES_MULTIPLE" in config: self.var_res_multiple.set(config["RES_MULTIPLE"])
         if "STEPS" in config: self.var_steps.set(config["STEPS"])
         if "CFG_SCALE" in config: self.var_cfg.set(config["CFG_SCALE"])
         if "GUIDANCE" in config: self.var_guidance.set(config["GUIDANCE"])
@@ -573,6 +580,9 @@ class DesktopManager:
             "NEGATIVE_PROMPT": self.generator_tab.entry_neg_prompt.get("1.0", "end-1c").strip(),
             "WIDTH": self.var_width.get(),
             "HEIGHT": self.var_height.get(),
+            "ASPECT_RATIO": self.var_aspect_ratio.get(),
+            "MEGAPIXELS": self.var_megapixels.get(),
+            "RES_MULTIPLE": self.var_res_multiple.get(),
             "STEPS": self.var_steps.get(),
             "CFG_SCALE": self.var_cfg.get(),
             "GUIDANCE": self.var_guidance.get(),
