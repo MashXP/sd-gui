@@ -11,6 +11,7 @@ from tkinter import ttk, messagebox
 
 import styles
 import profile_manager
+import cli_capabilities
 import settings_store
 from runner import ProcessRunner
 from history_db import HistoryDB
@@ -165,6 +166,13 @@ class DesktopManager:
         self.scanned_models = []
         self.scanned_loras = []
         
+        # Ask the binary which samplers and schedulers it supports, so the
+        # dropdowns track the installed build instead of a hardcoded list that
+        # can omit required values such as "flux" for Flux and Qwen-Image-2.1.
+        self.cli_options = cli_capabilities.discover(CLI_PATH)
+        self.sampling_method_options = self.cli_options["sampling_methods"]
+        self.scheduler_options = self.cli_options["schedulers"]
+        
         self.build_ui()
         
         # Scan and load profile selections
@@ -208,6 +216,44 @@ class DesktopManager:
             
         if hasattr(self.generator_tab, 'combo_lora_dir'):
             self.generator_tab.combo_lora_dir['values'] = ["", "lora"] + self.scanned_loras
+
+    def refresh_cli_options(self):
+        """Re-reads the binary's supported samplers and schedulers.
+
+        Keeps the dropdowns current if the sd-cli build is replaced, and
+        updates the value lists in place so the current selection is kept.
+        """
+        self.cli_options = cli_capabilities.discover(CLI_PATH)
+        self.sampling_method_options = self.cli_options["sampling_methods"]
+        self.scheduler_options = self.cli_options["schedulers"]
+
+        tab = getattr(self, "generator_tab", None)
+        if tab is None:
+            return self.cli_options
+        tab.sampling_method_options = self.sampling_method_options
+        tab.scheduler_options = self.scheduler_options
+        if hasattr(tab, "combo_sampler"):
+            tab.combo_sampler['values'] = self.sampling_method_options
+        if hasattr(tab, "combo_sched"):
+            tab.combo_sched['values'] = [""] + self.scheduler_options
+        return self.cli_options
+
+    def reload_workspace(self):
+        """Rescans models, LoRAs and profiles so newly added files show up.
+
+        scan_workspace() rewrites the combobox values but does not touch their
+        textvariables, so the currently selected model, encoder and LoRA are
+        all preserved across a reload.
+        """
+        self.scan_workspace()
+        self.load_profiles_list()
+        # Also re-read the binary, so a newly installed build gets its
+        # samplers and schedulers without restarting the app.
+        self.refresh_cli_options()
+        self.generator_tab.update_cmd_preview()
+        self.show_toast(
+            f"Reloaded: {len(self.scanned_models)} models, {len(self.scanned_loras)} LoRAs"
+        )
 
     def load_profiles_list(self):
         self.profile_list = [f[:-4] for f in os.listdir(PROFILES_DIR) if f.endswith(".env")]
@@ -296,6 +342,16 @@ class DesktopManager:
         steps = self.var_steps.get().strip()
         if steps:
             cmd += ["--steps", steps]
+            
+        sampler = self.var_sampler.get().strip()
+        if sampler:
+            cmd += ["--sampling-method", sampler]
+            
+        # Left empty by default so sd.cpp applies its model-specific default,
+        # which is what Flux and Qwen-Image-2.1 need (the "flux" scheduler).
+        scheduler = self.var_scheduler.get().strip()
+        if scheduler:
+            cmd += ["--scheduler", scheduler]
             
         cfg = self.var_cfg.get().strip()
         if cfg:

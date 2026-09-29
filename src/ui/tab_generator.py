@@ -61,6 +61,8 @@ class GeneratorTab:
         self.var_max_vram = app.var_max_vram
         self.var_sampler = app.var_sampler
         self.var_scheduler = app.var_scheduler
+        self.sampling_method_options = app.sampling_method_options
+        self.scheduler_options = app.scheduler_options
         self.var_flow_shift = app.var_flow_shift
         self.var_video_frames = app.var_video_frames
         self.var_cache = app.var_cache
@@ -120,6 +122,11 @@ class GeneratorTab:
         header_profile = tk.Frame(left_frame, bg=self.bg_card)
         header_profile.pack(fill=tk.X, padx=15, pady=(15, 8))
         tk.Label(header_profile, text="Profiles", bg=self.bg_card, fg=self.accent_blue, font=styles.FONT_TITLE).pack(side=tk.LEFT)
+        
+        # Lives in the header rather than the scrolling form so it stays
+        # reachable without scrolling back to the top of the parameters.
+        btn_reload = ttk.Button(header_profile, text="Reload", command=self.app.reload_workspace)
+        btn_reload.pack(side=tk.RIGHT)
         
         profile_frame = tk.Frame(left_frame, bg=self.bg_card)
         profile_frame.pack(fill=tk.X, padx=15, pady=(0, 10))
@@ -428,15 +435,15 @@ class GeneratorTab:
         r_sub = 0
 
         tk.Label(f_samp, text="Sampling Method", bg=self.bg_card, fg=self.text_secondary).grid(row=r_sub, column=0, sticky='w', pady=4)
-        combo_sampler = ttk.Combobox(f_samp, textvariable=self.var_sampler, values=["euler", "er_sde", "dpm++2s_a", "euler_a", "dpm++2m_sde", "tcd", "lcm"], state="readonly", style='TCombobox')
-        combo_sampler.grid(row=r_sub, column=1, sticky='we', pady=4, padx=(8, 0))
-        combo_sampler.bind("<<ComboboxSelected>>", lambda e: self.update_cmd_preview())
+        self.combo_sampler = ttk.Combobox(f_samp, textvariable=self.var_sampler, values=self.sampling_method_options, state="readonly", style='TCombobox')
+        self.combo_sampler.grid(row=r_sub, column=1, sticky='we', pady=4, padx=(8, 0))
+        self.combo_sampler.bind("<<ComboboxSelected>>", lambda e: self.update_cmd_preview())
         r_sub += 1
 
         tk.Label(f_samp, text="Scheduler", bg=self.bg_card, fg=self.text_secondary).grid(row=r_sub, column=0, sticky='w', pady=4)
-        combo_sched = ttk.Combobox(f_samp, textvariable=self.var_scheduler, values=["", "discrete", "smoothstep", "karras", "flux2", "ays", "exponential"], state="readonly", style='TCombobox')
-        combo_sched.grid(row=r_sub, column=1, sticky='we', pady=4, padx=(8, 0))
-        combo_sched.bind("<<ComboboxSelected>>", lambda e: self.update_cmd_preview())
+        self.combo_sched = ttk.Combobox(f_samp, textvariable=self.var_scheduler, values=[""] + self.scheduler_options, state="readonly", style='TCombobox')
+        self.combo_sched.grid(row=r_sub, column=1, sticky='we', pady=4, padx=(8, 0))
+        self.combo_sched.bind("<<ComboboxSelected>>", lambda e: self.update_cmd_preview())
         r_sub += 1
 
         tk.Label(f_samp, text="Flow Shift / Sec / Frames / FPS", bg=self.bg_card, fg=self.text_secondary).grid(row=r_sub, column=0, sticky='w', pady=4)
