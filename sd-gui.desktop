@@ -1,10 +1,10 @@
 [Desktop Entry]
 Name=SD-GUI
 Comment=Stable Diffusion CPP GUI Launcher & Manager
-Exec=python ~/Projects/sd-gui/sd-gui.py
+Exec=python3 sd-gui.py
 Path=/home/mashxp/Projects/sd-gui
 Icon=/home/mashxp/Projects/sd-gui/icon.png
 Terminal=false
 Type=Application
-Categories=Graphics;Utility;ArtificialIntelligence;
+Categories=Graphics;
 Keywords=stable;diffusion;sd;gui;ai;
