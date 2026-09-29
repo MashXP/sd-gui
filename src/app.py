@@ -723,27 +723,52 @@ class DesktopManager:
             self.show_toast("Console logs copied!")
 
     def show_toast(self, message, duration=1500):
-        toast = tk.Toplevel(self.root)
-        toast.overrideredirect(True)
-        toast.configure(bg=self.bg_input)
+        """Shows a small transient popup near the bottom-centre of the window.
 
-        lbl = tk.Label(toast, text=message, bg=self.bg_input, fg=self.accent_blue, font=styles.FONT_TITLE, padx=15, pady=8)
-        lbl.pack()
+        The toast is drawn inside the main window rather than as a separate
+        override-redirect Toplevel. A Toplevel has no intrinsic size of its own,
+        so it inherits the parent's geometry, and the window manager
+        intermittently discards the requested size -- that is what made toasts
+        sometimes render as a panel the size of the whole window. The toast
+        sits inside the window bounds anyway, so an in-window overlay gives the
+        same result with no window manager involved.
+        """
+        frame = getattr(self, "_toast_frame", None)
+        if frame is None or not frame.winfo_exists():
+            frame = tk.Frame(
+                self.root, bg=self.bg_input, bd=1,
+                relief=tk.SOLID, highlightbackground=self.border_color
+            )
+            self._toast_label = tk.Label(
+                frame, text="", bg=self.bg_input, fg=self.accent_blue,
+                font=styles.FONT_TITLE, padx=15, pady=8
+            )
+            self._toast_label.pack()
+            self._toast_frame = frame
+            self._toast_after = None
+        elif getattr(self, "_toast_after", None) is not None:
+            try:
+                self.root.after_cancel(self._toast_after)
+            except Exception:
+                pass
 
-        self.root.update()
-        toast.update_idletasks()
-        rx = self.root.winfo_rootx()
-        ry = self.root.winfo_rooty()
-        rw = self.root.winfo_width()
-        rh = self.root.winfo_height()
-        tw = toast.winfo_reqwidth()
-        th = toast.winfo_reqheight()
+        self._toast_label.config(text=message)
+        self.root.update_idletasks()
 
-        x = rx + (rw // 2) - (tw // 2)
-        y = ry + rh - th - 40
-        toast.geometry(f"+{x}+{y}")
+        # Size from the label, then anchor the frame's bottom-left corner just
+        # above the bottom edge of the window, horizontally centred.
+        tw = self._toast_label.winfo_reqwidth()
+        th = self._toast_label.winfo_reqheight()
+        frame.place(relx=0.5, rely=1.0, x=-(tw / 2), y=-(th + 40), anchor="sw")
+        frame.lift()
 
-        self.root.after(duration, toast.destroy)
+        self._toast_after = self.root.after(duration, self._hide_toast)
+
+    def _hide_toast(self):
+        frame = getattr(self, "_toast_frame", None)
+        if frame is not None and frame.winfo_exists():
+            frame.place_forget()
+        self._toast_after = None
 
     def copy_to_clipboard(self, text):
         if not text:
