@@ -50,6 +50,10 @@ class HistoryTab:
         )
         self.btn_record.pack(side=tk.LEFT, padx=8)
 
+        # Reflect the persisted recording state in the button label
+        if not self.app.var_record_history.get():
+            self.btn_record.config(text="○ Paused", fg=self.text_secondary)
+
         btn_delete_sel = ttk.Button(btn_frame, text="Delete Selected", command=self.delete_selected)
         btn_delete_sel.pack(side=tk.LEFT, padx=4)
 
@@ -300,7 +304,7 @@ class HistoryTab:
 
     def toggle_recording(self):
         recording = self.app.var_record_history.get()
-        self.app.var_record_history.set(not recording)
+        self.app.set_record_history(not recording)
         if not recording:
             self.btn_record.config(text="● Recording", fg="#34d399")
         else:

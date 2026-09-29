@@ -10,6 +10,7 @@ from tkinter import ttk, messagebox
 
 import styles
 import profile_manager
+import settings_store
 from runner import ProcessRunner
 from history_db import HistoryDB
 
@@ -72,8 +73,11 @@ class DesktopManager:
         self.start_time = None
         self.timer_running = False
         
-        # History recording toggle
-        self.var_record_history = tk.BooleanVar(value=True)
+        # History recording toggle (persisted so it survives restarts)
+        settings = settings_store.read_settings()
+        self.var_record_history = tk.BooleanVar(
+            value=bool(settings.get("record_history", True))
+        )
 
         # Form field variables
         self.var_binary = tk.StringVar(value="sd-cli")
@@ -655,6 +659,11 @@ class DesktopManager:
         self.generator_tab.combo_profile.set("")
         self.generator_tab.entry_save_name.delete(0, tk.END)
         self.show_toast(f"Profile '{name}' deleted!")
+
+    def set_record_history(self, enabled):
+        """Sets the history recording toggle and persists it for the next launch."""
+        self.var_record_history.set(bool(enabled))
+        settings_store.write_setting("record_history", bool(enabled))
 
     def clear_logs(self):
         self.generator_tab.text_terminal.delete("1.0", tk.END)

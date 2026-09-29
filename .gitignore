@@ -21,3 +21,4 @@ output/*
 
 _legacy
 data.db
+settings.json
