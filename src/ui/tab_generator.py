@@ -84,6 +84,17 @@ class GeneratorTab:
         self.var_circular = app.var_circular
         self.var_disable_metadata = app.var_disable_metadata
 
+        # MiniMax-H3 & Ref2VA variables
+        self.var_audio_vae = app.var_audio_vae
+        self.var_llm_vision = app.var_llm_vision
+        self.var_fps = app.var_fps
+        self.var_video_seconds = app.var_video_seconds
+        self.var_end_img = app.var_end_img
+        self.var_ref_img = app.var_ref_img
+        self.var_ref_video = app.var_ref_video
+        self.var_ref_audio = app.var_ref_audio
+        self.var_ref_video_audio = app.var_ref_video_audio
+
         self.build_ui()
 
     def build_ui(self):
@@ -201,6 +212,26 @@ class GeneratorTab:
         setup_filterable_combobox(self.combo_vae, lambda: self.app.scanned_models, lambda e=None: self.update_cmd_preview())
         btn_browse_vae = ttk.Button(vae_frame, text=">", width=2, command=self.browse_vae)
         btn_browse_vae.pack(side=tk.LEFT)
+        row += 1
+        
+        tk.Label(scroll_frame, text="LLM Vision Tower", bg=self.bg_card, fg=self.text_secondary).grid(row=row, column=0, sticky='w', pady=6)
+        llm_vision_frame = tk.Frame(scroll_frame, bg=self.bg_card)
+        llm_vision_frame.grid(row=row, column=1, sticky='we', pady=6, padx=(10, 0))
+        self.combo_llm_vision = ttk.Combobox(llm_vision_frame, textvariable=self.var_llm_vision, style='TCombobox')
+        self.combo_llm_vision.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 4), ipady=3)
+        setup_filterable_combobox(self.combo_llm_vision, lambda: self.app.scanned_models, lambda e=None: self.update_cmd_preview())
+        btn_browse_llm_vision = ttk.Button(llm_vision_frame, text=">", width=2, command=self.browse_llm_vision)
+        btn_browse_llm_vision.pack(side=tk.LEFT)
+        row += 1
+
+        tk.Label(scroll_frame, text="Audio VAE Decoder", bg=self.bg_card, fg=self.text_secondary).grid(row=row, column=0, sticky='w', pady=6)
+        audio_vae_frame = tk.Frame(scroll_frame, bg=self.bg_card)
+        audio_vae_frame.grid(row=row, column=1, sticky='we', pady=6, padx=(10, 0))
+        self.combo_audio_vae = ttk.Combobox(audio_vae_frame, textvariable=self.var_audio_vae, style='TCombobox')
+        self.combo_audio_vae.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 4), ipady=3)
+        setup_filterable_combobox(self.combo_audio_vae, lambda: self.app.scanned_models, lambda e=None: self.update_cmd_preview())
+        btn_browse_audio_vae = ttk.Button(audio_vae_frame, text=">", width=2, command=self.browse_audio_vae)
+        btn_browse_audio_vae.pack(side=tk.LEFT)
         row += 1
         
         # Art Style Row
@@ -351,17 +382,25 @@ class GeneratorTab:
         combo_sched.bind("<<ComboboxSelected>>", lambda e: self.update_cmd_preview())
         r_sub += 1
 
-        tk.Label(f_samp, text="Flow Shift / Video Frames", bg=self.bg_card, fg=self.text_secondary).grid(row=r_sub, column=0, sticky='w', pady=4)
+        tk.Label(f_samp, text="Flow Shift / Sec / Frames / FPS", bg=self.bg_card, fg=self.text_secondary).grid(row=r_sub, column=0, sticky='w', pady=4)
         vid_frame = tk.Frame(f_samp, bg=self.bg_card)
         vid_frame.grid(row=r_sub, column=1, sticky='we', pady=4, padx=(8, 0))
         
-        entry_flow = styles.create_custom_entry(vid_frame, textvariable=self.var_flow_shift, width=7)
-        entry_flow.pack(side=tk.LEFT, padx=(0, 8), ipady=3)
+        entry_flow = styles.create_custom_entry(vid_frame, textvariable=self.var_flow_shift, width=5)
+        entry_flow.pack(side=tk.LEFT, padx=(0, 5), ipady=3)
         entry_flow.bind("<KeyRelease>", lambda e: self.update_cmd_preview())
         
-        entry_vframes = styles.create_custom_entry(vid_frame, textvariable=self.var_video_frames, width=10)
-        entry_vframes.pack(side=tk.LEFT, ipady=3)
-        entry_vframes.bind("<KeyRelease>", lambda e: self.update_cmd_preview())
+        entry_vsec = styles.create_custom_entry(vid_frame, textvariable=self.var_video_seconds, width=6)
+        entry_vsec.pack(side=tk.LEFT, padx=(0, 5), ipady=3)
+        entry_vsec.bind("<KeyRelease>", self.on_video_seconds_change)
+
+        entry_vframes = styles.create_custom_entry(vid_frame, textvariable=self.var_video_frames, width=6)
+        entry_vframes.pack(side=tk.LEFT, padx=(0, 5), ipady=3)
+        entry_vframes.bind("<KeyRelease>", self.on_video_frames_change)
+
+        entry_fps = styles.create_custom_entry(vid_frame, textvariable=self.var_fps, width=5)
+        entry_fps.pack(side=tk.LEFT, ipady=3)
+        entry_fps.bind("<KeyRelease>", self.on_fps_change)
         r_sub += 1
 
         # 2. Section: Guidance & SLG
@@ -458,6 +497,18 @@ class GeneratorTab:
         btn_browse_init.pack(side=tk.LEFT)
         r_sub += 1
 
+        tk.Label(f_hires, text="End Image (--end-img)", bg=self.bg_card, fg=self.text_secondary).grid(row=r_sub, column=0, sticky='w', pady=4)
+        end_frame = tk.Frame(f_hires, bg=self.bg_card)
+        end_frame.grid(row=r_sub, column=1, sticky='we', pady=4, padx=(8, 0))
+        
+        entry_end = styles.create_custom_entry(end_frame, textvariable=self.var_end_img)
+        entry_end.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5), ipady=3)
+        entry_end.bind("<KeyRelease>", lambda e: self.update_cmd_preview())
+        
+        btn_browse_end = ttk.Button(end_frame, text=">", width=2, command=self.browse_end_image)
+        btn_browse_end.pack(side=tk.LEFT)
+        r_sub += 1
+
         tk.Label(f_hires, text="Denoise / Hires Fix", bg=self.bg_card, fg=self.text_secondary).grid(row=r_sub, column=0, sticky='w', pady=4)
         hires_act_frame = tk.Frame(f_hires, bg=self.bg_card)
         hires_act_frame.grid(row=r_sub, column=1, sticky='we', pady=4, padx=(8, 0))
@@ -527,7 +578,56 @@ class GeneratorTab:
         self.chk_metadata.pack(anchor='w', pady=2)
         r_sub += 1
 
-        # 6. Section: Cache Settings
+        # 6. Section: Reference Conditioning (Ref2VA / Multi-Modal)
+        c_ref = CollapsibleFrame(scroll_frame, title="Reference Conditioning (Ref2VA)", bg_card=self.bg_card, accent_blue=self.accent_blue, text_primary=self.text_primary, expanded=False, on_toggle=self.update_scrollregion)
+        c_ref.grid(row=row, column=0, columnspan=2, sticky='we', pady=(4, 2))
+        row += 1
+
+        f_ref = c_ref.content
+        f_ref.columnconfigure(1, weight=1)
+        r_sub = 0
+
+        tk.Label(f_ref, text="Ref Image (-r / --ref-image)", bg=self.bg_card, fg=self.text_secondary).grid(row=r_sub, column=0, sticky='w', pady=4)
+        ref_img_frame = tk.Frame(f_ref, bg=self.bg_card)
+        ref_img_frame.grid(row=r_sub, column=1, sticky='we', pady=4, padx=(8, 0))
+        entry_ref_img = styles.create_custom_entry(ref_img_frame, textvariable=self.var_ref_img)
+        entry_ref_img.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5), ipady=3)
+        entry_ref_img.bind("<KeyRelease>", lambda e: self.update_cmd_preview())
+        btn_browse_ref_img = ttk.Button(ref_img_frame, text=">", width=2, command=self.browse_ref_image)
+        btn_browse_ref_img.pack(side=tk.LEFT)
+        r_sub += 1
+
+        tk.Label(f_ref, text="Ref Video (--ref-video)", bg=self.bg_card, fg=self.text_secondary).grid(row=r_sub, column=0, sticky='w', pady=4)
+        ref_vid_frame = tk.Frame(f_ref, bg=self.bg_card)
+        ref_vid_frame.grid(row=r_sub, column=1, sticky='we', pady=4, padx=(8, 0))
+        entry_ref_vid = styles.create_custom_entry(ref_vid_frame, textvariable=self.var_ref_video)
+        entry_ref_vid.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5), ipady=3)
+        entry_ref_vid.bind("<KeyRelease>", lambda e: self.update_cmd_preview())
+        btn_browse_ref_vid = ttk.Button(ref_vid_frame, text=">", width=2, command=self.browse_ref_video)
+        btn_browse_ref_vid.pack(side=tk.LEFT)
+        r_sub += 1
+
+        tk.Label(f_ref, text="Ref Audio (--ref-audio)", bg=self.bg_card, fg=self.text_secondary).grid(row=r_sub, column=0, sticky='w', pady=4)
+        ref_aud_frame = tk.Frame(f_ref, bg=self.bg_card)
+        ref_aud_frame.grid(row=r_sub, column=1, sticky='we', pady=4, padx=(8, 0))
+        entry_ref_aud = styles.create_custom_entry(ref_aud_frame, textvariable=self.var_ref_audio)
+        entry_ref_aud.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5), ipady=3)
+        entry_ref_aud.bind("<KeyRelease>", lambda e: self.update_cmd_preview())
+        btn_browse_ref_aud = ttk.Button(ref_aud_frame, text=">", width=2, command=self.browse_ref_audio)
+        btn_browse_ref_aud.pack(side=tk.LEFT)
+        r_sub += 1
+
+        tk.Label(f_ref, text="Ref Video Audio (--ref-video-audio)", bg=self.bg_card, fg=self.text_secondary).grid(row=r_sub, column=0, sticky='w', pady=4)
+        ref_vaud_frame = tk.Frame(f_ref, bg=self.bg_card)
+        ref_vaud_frame.grid(row=r_sub, column=1, sticky='we', pady=4, padx=(8, 0))
+        entry_ref_vaud = styles.create_custom_entry(ref_vaud_frame, textvariable=self.var_ref_video_audio)
+        entry_ref_vaud.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5), ipady=3)
+        entry_ref_vaud.bind("<KeyRelease>", lambda e: self.update_cmd_preview())
+        btn_browse_ref_vaud = ttk.Button(ref_vaud_frame, text=">", width=2, command=self.browse_ref_video_audio)
+        btn_browse_ref_vaud.pack(side=tk.LEFT)
+        r_sub += 1
+
+        # 7. Section: Cache Settings
         c_cache = CollapsibleFrame(scroll_frame, title="Cache Settings", bg_card=self.bg_card, accent_blue=self.accent_blue, text_primary=self.text_primary, expanded=False, on_toggle=self.update_scrollregion)
         c_cache.grid(row=row, column=0, columnspan=2, sticky='we', pady=(4, 2))
         row += 1
@@ -863,6 +963,88 @@ class GeneratorTab:
             self.var_lora_dir.set(directory)
             self.update_cmd_preview()
 
+    def browse_llm_vision(self):
+        filename = filedialog.askopenfilename(
+            title="Select LLM Vision Tower",
+            filetypes=[("Model Files", "*.safetensors *.gguf *.ckpt"), ("All Files", "*.*")]
+        )
+        if filename:
+            if filename.startswith(self.app.WORKSPACE_DIR):
+                filename = os.path.relpath(filename, self.app.WORKSPACE_DIR)
+            self.var_llm_vision.set(filename)
+            self.update_cmd_preview()
+
+    def browse_audio_vae(self):
+        filename = filedialog.askopenfilename(
+            title="Select Audio VAE Decoder",
+            filetypes=[("Model Files", "*.safetensors *.gguf *.ckpt"), ("All Files", "*.*")]
+        )
+        if filename:
+            if filename.startswith(self.app.WORKSPACE_DIR):
+                filename = os.path.relpath(filename, self.app.WORKSPACE_DIR)
+            self.var_audio_vae.set(filename)
+            self.update_cmd_preview()
+
+    def browse_end_image(self):
+        filename = filedialog.askopenfilename(
+            title="Select End Frame Image for FL2VA",
+            filetypes=[("Image Files", "*.png *.jpg *.jpeg *.webp *.bmp"), ("All Files", "*.*")]
+        )
+        if filename:
+            self.var_end_img.set(filename)
+            self.update_cmd_preview()
+
+    def browse_ref_image(self):
+        filename = filedialog.askopenfilename(
+            title="Select Reference Image (-r / --ref-image)",
+            filetypes=[("Image Files", "*.png *.jpg *.jpeg *.webp *.bmp"), ("All Files", "*.*")]
+        )
+        if filename:
+            current = self.var_ref_img.get().strip()
+            if current:
+                self.var_ref_img.set(f"{current}, {filename}")
+            else:
+                self.var_ref_img.set(filename)
+            self.update_cmd_preview()
+
+    def browse_ref_video(self):
+        directory = filedialog.askdirectory(
+            title="Select Reference Video Directory (--ref-video)"
+        )
+        if directory:
+            current = self.var_ref_video.get().strip()
+            if current:
+                self.var_ref_video.set(f"{current}, {directory}")
+            else:
+                self.var_ref_video.set(directory)
+            self.update_cmd_preview()
+
+    def browse_ref_audio(self):
+        filename = filedialog.askopenfilename(
+            title="Select Reference Audio File (--ref-audio)",
+            filetypes=[("Audio Files", "*.wav *.mp3 *.flac *.ogg"), ("All Files", "*.*")]
+        )
+        if filename:
+            current = self.var_ref_audio.get().strip()
+            if current:
+                self.var_ref_audio.set(f"{current}, {filename}")
+            else:
+                self.var_ref_audio.set(filename)
+            self.update_cmd_preview()
+
+    def browse_ref_video_audio(self):
+        filename = filedialog.askopenfilename(
+            title="Select Reference Video Audio File (--ref-video-audio)",
+            filetypes=[("Audio Files", "*.wav *.mp3 *.flac *.ogg"), ("All Files", "*.*")]
+        )
+        if filename:
+            current = self.var_ref_video_audio.get().strip()
+            if current:
+                self.var_ref_video_audio.set(f"{current}, {filename}")
+            else:
+                self.var_ref_video_audio.set(filename)
+            self.update_cmd_preview()
+
     def update_layout_for_binary_mode(self):
         binary = self.var_binary.get()
         if binary == "sd-server":
@@ -913,4 +1095,43 @@ class GeneratorTab:
         self.update_cmd_preview()
 
     def on_neg_prompt_change(self, event=None):
+        self.update_cmd_preview()
+
+    def on_video_seconds_change(self, event=None):
+        try:
+            sec_str = self.var_video_seconds.get().strip()
+            fps_str = self.var_fps.get().strip()
+            fps = float(fps_str) if fps_str else 24.0
+            if sec_str:
+                sec = float(sec_str)
+                frames = max(1, int(round(sec * fps)))
+                if self.var_video_frames.get().strip() != str(frames):
+                    self.var_video_frames.set(str(frames))
+            else:
+                self.var_video_frames.set("")
+        except ValueError:
+            pass
+        self.update_cmd_preview()
+
+    def on_video_frames_change(self, event=None):
+        try:
+            frames_str = self.var_video_frames.get().strip()
+            fps_str = self.var_fps.get().strip()
+            fps = float(fps_str) if fps_str else 24.0
+            if frames_str:
+                frames = int(frames_str)
+                sec = round(frames / fps, 2)
+                if self.var_video_seconds.get().strip() != str(sec):
+                    self.var_video_seconds.set(str(sec))
+            else:
+                self.var_video_seconds.set("")
+        except ValueError:
+            pass
+        self.update_cmd_preview()
+
+    def on_fps_change(self, event=None):
+        if self.var_video_seconds.get().strip():
+            self.on_video_seconds_change()
+        elif self.var_video_frames.get().strip():
+            self.on_video_frames_change()
         self.update_cmd_preview()

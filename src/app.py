@@ -97,6 +97,7 @@ class DesktopManager:
         self.var_scheduler = tk.StringVar(value="discrete")
         self.var_flow_shift = tk.StringVar(value="")
         self.var_video_frames = tk.StringVar(value="")
+        self.var_video_seconds = tk.StringVar(value="")
         self.var_cache = tk.StringVar(value="none")
         self.var_cache_option = tk.StringVar(value="")
         self.var_output = tk.StringVar(value="output_%03d.png")
@@ -133,6 +134,16 @@ class DesktopManager:
         
         # Art Style variable ("None" means disabled)
         self.var_art_style = tk.StringVar(value="None")
+        
+        # MiniMax-H3 & Ref2VA variables
+        self.var_audio_vae = tk.StringVar(value="")
+        self.var_llm_vision = tk.StringVar(value="")
+        self.var_fps = tk.StringVar(value="")
+        self.var_end_img = tk.StringVar(value="")
+        self.var_ref_img = tk.StringVar(value="")
+        self.var_ref_video = tk.StringVar(value="")
+        self.var_ref_audio = tk.StringVar(value="")
+        self.var_ref_video_audio = tk.StringVar(value="")
         
         self.profile_list = []
         self.scanned_models = []
@@ -171,7 +182,12 @@ class DesktopManager:
                         self.scanned_loras.append(rel_path)
         self.scanned_loras.sort()
         
-        for combo in [self.generator_tab.combo_model, self.generator_tab.combo_t5xxl, self.generator_tab.combo_llm, self.generator_tab.combo_vae]:
+        combo_list = [self.generator_tab.combo_model, self.generator_tab.combo_t5xxl, self.generator_tab.combo_llm, self.generator_tab.combo_vae]
+        if hasattr(self.generator_tab, 'combo_llm_vision'):
+            combo_list.append(self.generator_tab.combo_llm_vision)
+        if hasattr(self.generator_tab, 'combo_audio_vae'):
+            combo_list.append(self.generator_tab.combo_audio_vae)
+        for combo in combo_list:
             combo['values'] = [""] + self.scanned_models
             
         if hasattr(self.generator_tab, 'combo_lora_dir'):
@@ -227,6 +243,12 @@ class DesktopManager:
             cmd += ["--t5xxl", t5xxl]
         if llm:
             cmd += ["--llm", llm]
+        audio_vae = self.var_audio_vae.get().strip()
+        if audio_vae:
+            cmd += ["--audio-vae", audio_vae]
+        llm_vision = self.var_llm_vision.get().strip()
+        if llm_vision:
+            cmd += ["--llm_vision", llm_vision]
             
         backend = self.var_backend.get()
         if backend:
@@ -300,9 +322,37 @@ class DesktopManager:
         if video_frames:
             cmd += ["--video-frames", video_frames]
             
+        fps = self.var_fps.get().strip()
+        if fps:
+            cmd += ["--fps", fps]
+
         init_img = self.var_init_img.get().strip()
         if init_img:
             cmd += ["-i", init_img]
+
+        end_img = self.var_end_img.get().strip()
+        if end_img:
+            cmd += ["--end-img", end_img]
+
+        ref_img = self.var_ref_img.get().strip()
+        if ref_img:
+            for path in [p.strip() for p in ref_img.split(',') if p.strip()]:
+                cmd += ["-r", path]
+
+        ref_video = self.var_ref_video.get().strip()
+        if ref_video:
+            for path in [p.strip() for p in ref_video.split(',') if p.strip()]:
+                cmd += ["--ref-video", path]
+
+        ref_audio = self.var_ref_audio.get().strip()
+        if ref_audio:
+            for path in [p.strip() for p in ref_audio.split(',') if p.strip()]:
+                cmd += ["--ref-audio", path]
+
+        ref_video_audio = self.var_ref_video_audio.get().strip()
+        if ref_video_audio:
+            for path in [p.strip() for p in ref_video_audio.split(',') if p.strip()]:
+                cmd += ["--ref-video-audio", path]
 
         cache = self.var_cache.get()
         if cache != "none":
@@ -405,6 +455,8 @@ class DesktopManager:
         if "VAE" in config: self.var_vae.set(config["VAE"])
         if "T5XXL" in config: self.var_t5xxl.set(config["T5XXL"])
         if "LLM" in config: self.var_llm.set(config["LLM"])
+        if "AUDIO_VAE" in config: self.var_audio_vae.set(config["AUDIO_VAE"])
+        if "LLM_VISION" in config: self.var_llm_vision.set(config["LLM_VISION"])
         if "BACKEND" in config: self.var_backend.set(config["BACKEND"])
         
         self.generator_tab.entry_prompt.delete("1.0", tk.END)
@@ -427,11 +479,27 @@ class DesktopManager:
         if "SCHEDULER" in config: self.var_scheduler.set(config["SCHEDULER"])
         if "FLOW_SHIFT" in config: self.var_flow_shift.set(config["FLOW_SHIFT"])
         if "VIDEO_FRAMES" in config: self.var_video_frames.set(config["VIDEO_FRAMES"])
+        if "FPS" in config: self.var_fps.set(config["FPS"])
+        if "VIDEO_SECONDS" in config:
+            self.var_video_seconds.set(config["VIDEO_SECONDS"])
+        else:
+            try:
+                vf = float(self.var_video_frames.get().strip())
+                fps_val = float(self.var_fps.get().strip()) if self.var_fps.get().strip() else 24.0
+                if vf > 0 and fps_val > 0:
+                    self.var_video_seconds.set(str(round(vf / fps_val, 2)))
+            except Exception:
+                pass
         if "CACHE_MODE" in config: self.var_cache.set(config["CACHE_MODE"])
         if "CACHE_OPTION" in config: self.var_cache_option.set(config["CACHE_OPTION"])
         if "EXTRA_FLAGS" in config: self.var_extra_flags.set(config["EXTRA_FLAGS"])
         
         if "INIT_IMG" in config: self.var_init_img.set(config["INIT_IMG"])
+        if "END_IMG" in config: self.var_end_img.set(config["END_IMG"])
+        if "REF_IMAGE" in config: self.var_ref_img.set(config["REF_IMAGE"])
+        if "REF_VIDEO" in config: self.var_ref_video.set(config["REF_VIDEO"])
+        if "REF_AUDIO" in config: self.var_ref_audio.set(config["REF_AUDIO"])
+        if "REF_VIDEO_AUDIO" in config: self.var_ref_video_audio.set(config["REF_VIDEO_AUDIO"])
         if "STRENGTH" in config: self.var_strength.set(config["STRENGTH"])
         if "HIRES" in config: self.var_hires.set(config["HIRES"].lower() == "true")
         if "HIRES_SCALE" in config: self.var_hires_scale.set(config["HIRES_SCALE"])
@@ -486,6 +554,8 @@ class DesktopManager:
             "VAE": self.var_vae.get(),
             "T5XXL": self.var_t5xxl.get(),
             "LLM": self.var_llm.get(),
+            "AUDIO_VAE": self.var_audio_vae.get().strip(),
+            "LLM_VISION": self.var_llm_vision.get().strip(),
             "BACKEND": self.var_backend.get(),
             "PROMPT": self.generator_tab.entry_prompt.get("1.0", "end-1c").strip(),
             "NEGATIVE_PROMPT": self.generator_tab.entry_neg_prompt.get("1.0", "end-1c").strip(),
@@ -502,9 +572,16 @@ class DesktopManager:
             "SCHEDULER": self.var_scheduler.get(),
             "FLOW_SHIFT": self.var_flow_shift.get().strip(),
             "VIDEO_FRAMES": self.var_video_frames.get().strip(),
+            "VIDEO_SECONDS": self.var_video_seconds.get().strip(),
+            "FPS": self.var_fps.get().strip(),
             "CACHE_MODE": self.var_cache.get(),
             "CACHE_OPTION": self.var_cache_option.get().strip(),
             "INIT_IMG": self.var_init_img.get().strip(),
+            "END_IMG": self.var_end_img.get().strip(),
+            "REF_IMAGE": self.var_ref_img.get().strip(),
+            "REF_VIDEO": self.var_ref_video.get().strip(),
+            "REF_AUDIO": self.var_ref_audio.get().strip(),
+            "REF_VIDEO_AUDIO": self.var_ref_video_audio.get().strip(),
             "STRENGTH": self.var_strength.get().strip(),
             "HIRES": str(self.var_hires.get()).lower(),
             "HIRES_SCALE": self.var_hires_scale.get().strip(),
