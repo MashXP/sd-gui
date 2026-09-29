@@ -63,6 +63,7 @@ class GeneratorTab:
         self.var_scheduler = app.var_scheduler
         self.sampling_method_options = app.sampling_method_options
         self.scheduler_options = app.scheduler_options
+        self.cache_mode_options = app.cache_mode_options
         self.var_flow_shift = app.var_flow_shift
         self.var_video_frames = app.var_video_frames
         self.var_cache = app.var_cache
@@ -701,9 +702,9 @@ class GeneratorTab:
         r_sub = 0
 
         tk.Label(f_cache, text="Cache Mode", bg=self.bg_card, fg=self.text_secondary).grid(row=r_sub, column=0, sticky='w', pady=4)
-        combo_cache = ttk.Combobox(f_cache, textvariable=self.var_cache, values=["none", "spectrum", "easycache", "taylorseer", "dbcache"], state="readonly", style='TCombobox')
-        combo_cache.grid(row=r_sub, column=1, sticky='we', pady=4, padx=(8, 0))
-        combo_cache.bind("<<ComboboxSelected>>", lambda e: self.update_cmd_preview())
+        self.combo_cache = ttk.Combobox(f_cache, textvariable=self.var_cache, values=["none"] + self.cache_mode_options, state="readonly", style='TCombobox')
+        self.combo_cache.grid(row=r_sub, column=1, sticky='we', pady=4, padx=(8, 0))
+        self.combo_cache.bind("<<ComboboxSelected>>", lambda e: self.update_cmd_preview())
         r_sub += 1
 
         tk.Label(f_cache, text="Cache Options", bg=self.bg_card, fg=self.text_secondary).grid(row=r_sub, column=0, sticky='w', pady=4)

@@ -172,6 +172,7 @@ class DesktopManager:
         self.cli_options = cli_capabilities.discover(CLI_PATH)
         self.sampling_method_options = self.cli_options["sampling_methods"]
         self.scheduler_options = self.cli_options["schedulers"]
+        self.cache_mode_options = self.cli_options["cache_modes"]
         
         self.build_ui()
         
@@ -226,16 +227,20 @@ class DesktopManager:
         self.cli_options = cli_capabilities.discover(CLI_PATH)
         self.sampling_method_options = self.cli_options["sampling_methods"]
         self.scheduler_options = self.cli_options["schedulers"]
+        self.cache_mode_options = self.cli_options["cache_modes"]
 
         tab = getattr(self, "generator_tab", None)
         if tab is None:
             return self.cli_options
         tab.sampling_method_options = self.sampling_method_options
         tab.scheduler_options = self.scheduler_options
+        tab.cache_mode_options = self.cache_mode_options
         if hasattr(tab, "combo_sampler"):
             tab.combo_sampler['values'] = self.sampling_method_options
         if hasattr(tab, "combo_sched"):
             tab.combo_sched['values'] = [""] + self.scheduler_options
+        if hasattr(tab, "combo_cache"):
+            tab.combo_cache['values'] = ["none"] + self.cache_mode_options
         return self.cli_options
 
     def reload_workspace(self):
