@@ -62,6 +62,9 @@ class DesktopManager:
         self.db = HistoryDB(DB_PATH)
         self.log_queue = queue.Queue()
         self.runner = ProcessRunner(self.log_queue)
+
+        # Seed of the most recent recorded run, for the "Reuse" button
+        self.last_seed = self._load_last_seed()
         
         # Styling Setup
         self.bg_main = styles.BG_MAIN
@@ -674,6 +677,32 @@ class DesktopManager:
         if tab is not None:
             tab.update_cmd_preview()
 
+    def _load_last_seed(self):
+        """Returns the seed of the most recent recorded run, or None if there is none."""
+        try:
+            rows = self.db.get_all(limit=1)
+            if not rows:
+                return None
+            # Column order: id, date_str, model, prompt, negative_prompt,
+            #               width, height, seed, ...
+            seed = str(rows[0][7]).strip()
+            return seed if seed and seed.lstrip("-").isdigit() else None
+        except Exception:
+            return None
+
+    def apply_previous_seed(self):
+        """Puts the previous run's seed back in the field and locks it."""
+        if not self.last_seed:
+            self.show_toast("No previous seed available")
+            return
+        self.var_seed.set(self.last_seed)
+        # Lock the seed, otherwise the next run would immediately re-roll it.
+        self.var_random_seed.set(False)
+        tab = getattr(self, "generator_tab", None)
+        if tab is not None:
+            tab.update_cmd_preview()
+        self.show_toast(f"Reused previous seed: {self.last_seed}")
+
     def set_record_history(self, enabled):
         """Sets the history recording toggle and persists it for the next launch."""
         self.var_record_history.set(bool(enabled))
@@ -814,6 +843,10 @@ class DesktopManager:
                             out_file = f"output/{out_file}"
                         
                         actual_seed = self._extract_seed_from_terminal()
+                        # Remember it for the "Reuse" button, whether or not
+                        # this run gets written to the history database.
+                        if actual_seed and actual_seed.lstrip("-").isdigit():
+                            self.last_seed = actual_seed
                         
                         mode = self.var_mode.get().strip() or None
                         steps = self.var_steps.get().strip()

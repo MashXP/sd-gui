@@ -302,13 +302,16 @@ class GeneratorTab:
         entry_cfg.bind("<KeyRelease>", lambda e: self.update_cmd_preview())
         row += 1
         
-        tk.Label(scroll_frame, text="Seed / Max VRAM", bg=self.bg_card, fg=self.text_secondary).grid(row=row, column=0, sticky='w', pady=6)
+        tk.Label(scroll_frame, text="Seed", bg=self.bg_card, fg=self.text_secondary).grid(row=row, column=0, sticky='w', pady=6)
         seed_frame = tk.Frame(scroll_frame, bg=self.bg_card)
         seed_frame.grid(row=row, column=1, sticky='we', pady=6, padx=(10, 0))
         
         self.entry_seed = styles.create_custom_entry(seed_frame, textvariable=self.var_seed, width=10)
-        self.entry_seed.pack(side=tk.LEFT, padx=(0, 8), ipady=3)
+        self.entry_seed.pack(side=tk.LEFT, padx=(0, 4), ipady=3)
         self.entry_seed.bind("<KeyRelease>", lambda e: self.update_cmd_preview())
+        
+        self.btn_reuse_seed = ttk.Button(seed_frame, text="Reuse", width=6, command=self.app.apply_previous_seed)
+        self.btn_reuse_seed.pack(side=tk.LEFT, padx=(0, 8))
         
         self.chk_random_seed = tk.Checkbutton(
             seed_frame, text="Random", variable=self.app.var_random_seed,
@@ -317,9 +320,11 @@ class GeneratorTab:
             font=styles.FONT_MAIN, command=self.on_random_seed_toggle
         )
         self.chk_random_seed.pack(side=tk.LEFT, padx=(0, 10))
+        row += 1
 
-        entry_vram = styles.create_custom_entry(seed_frame, textvariable=self.var_max_vram, width=8)
-        entry_vram.pack(side=tk.LEFT, ipady=3)
+        tk.Label(scroll_frame, text="Max VRAM", bg=self.bg_card, fg=self.text_secondary).grid(row=row, column=0, sticky='w', pady=6)
+        entry_vram = styles.create_custom_entry(scroll_frame, textvariable=self.var_max_vram, width=8)
+        entry_vram.grid(row=row, column=1, sticky='w', pady=6, padx=(10, 0), ipady=3)
         entry_vram.bind("<KeyRelease>", lambda e: self.update_cmd_preview())
         row += 1
 
