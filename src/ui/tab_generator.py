@@ -1084,12 +1084,13 @@ class GeneratorTab:
         return "break"
 
     def on_random_seed_toggle(self):
+        # The seed field always shows a concrete value. "Random" only controls
+        # whether that value is re-rolled before each run; unchecking it locks
+        # the current seed so a result can be reproduced exactly.
         if self.app.var_random_seed.get():
-            self.var_seed.set("-1")
-            self.entry_seed.config(state=tk.DISABLED, fg=self.text_secondary)
+            self.app.roll_seed()
         else:
-            self.entry_seed.config(state=tk.NORMAL, fg=self.text_primary)
-        self.update_cmd_preview()
+            self.update_cmd_preview()
 
     def on_prompt_change(self, event=None):
         self.update_cmd_preview()

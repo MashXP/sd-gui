@@ -3,6 +3,7 @@ import sys
 import re
 import time
 import shlex
+import random
 import subprocess
 import queue
 import tkinter as tk
@@ -28,6 +29,10 @@ DB_PATH = os.path.join(WORKSPACE_DIR, "data.db")
 # Path to the build binaries
 CLI_PATH = os.path.expanduser("~/App/stable-diffusion.cpp/build/bin/sd-cli")
 SERVER_PATH = os.path.expanduser("~/App/stable-diffusion.cpp/build/bin/sd-server")
+
+# Seeds are rolled in the unsigned 32-bit range so they round-trip cleanly
+# through the CLI, the history database and the profile .env files.
+SEED_MAX = 2 ** 32 - 1
 
 class DesktopManager:
     """Master application coordinator for SD-GUI Desktop."""
@@ -92,7 +97,7 @@ class DesktopManager:
         self.var_steps = tk.StringVar(value="20")
         self.var_cfg = tk.StringVar(value="6.0")
         self.var_guidance = tk.StringVar(value="")
-        self.var_seed = tk.StringVar(value="-1")
+        self.var_seed = tk.StringVar(value=str(random.randint(0, SEED_MAX)))
         self.var_random_seed = tk.BooleanVar(value=True)
         self.var_batch_count = tk.StringVar(value="1")
         self.var_output_begin_idx = tk.StringVar(value="")
@@ -660,6 +665,15 @@ class DesktopManager:
         self.generator_tab.entry_save_name.delete(0, tk.END)
         self.show_toast(f"Profile '{name}' deleted!")
 
+    def roll_seed(self):
+        """Generates a new random seed and shows it in the seed field."""
+        self.var_seed.set(str(random.randint(0, SEED_MAX)))
+        # Guard: the generator tab is still being built the first time this runs
+        # (via on_random_seed_toggle), so it may not be attached to the app yet.
+        tab = getattr(self, "generator_tab", None)
+        if tab is not None:
+            tab.update_cmd_preview()
+
     def set_record_history(self, enabled):
         """Sets the history recording toggle and persists it for the next launch."""
         self.var_record_history.set(bool(enabled))
@@ -742,7 +756,12 @@ class DesktopManager:
     def start_process(self):
         if self.runner.is_running:
             return
-            
+
+        # Roll a fresh seed up front so the preview, the launched command and
+        # the history entry all agree on the seed that was actually used.
+        if self.var_random_seed.get():
+            self.roll_seed()
+
         cmd = self.build_command_list()
         binary_path = cmd[0]
         
@@ -772,7 +791,7 @@ class DesktopManager:
             m = re.search(pat, text, re.IGNORECASE)
             if m:
                 return m.group(1)
-        return self.var_seed.get().strip() or "-1"
+        return self.var_seed.get().strip() or "0"
 
     def poll_log_queue(self):
         try:
