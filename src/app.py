@@ -685,6 +685,7 @@ class DesktopManager:
             "VAE_CONV_DIRECT": str(self.var_vae_conv_direct.get()).lower(),
             "OFFLOAD_TO_CPU": str(self.var_offload.get()).lower(),
             "DIFFUSION_FA": str(self.var_fa.get()).lower(),
+            "EXTRA_FLAGS": self.var_extra_flags.get().strip(),
             "LISTEN_IP": self.var_listen_ip.get().strip(),
             "LISTEN_PORT": self.var_listen_port.get().strip(),
         }
