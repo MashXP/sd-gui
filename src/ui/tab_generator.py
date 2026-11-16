@@ -4,11 +4,12 @@ import glob
 import shlex
 import subprocess
 import tkinter as tk
-from tkinter import ttk, filedialog
+from tkinter import ttk
 from PIL import Image, ImageTk
 import styles
 import resolution
 import settings_store
+from ui import file_picker
 from ui.widgets import CollapsibleFrame, ResizableTextFrame, setup_filterable_combobox
 from ui.tab_gallery import GalleryTab
 from ui.tab_prompt_helper import PromptHelperTab
@@ -26,6 +27,25 @@ MIN_LINES = 1
 MAX_LINES = 16
 DEFAULT_PROMPT_LINES = 3
 DEFAULT_NEG_LINES = 2
+
+# Reference conditioning rows: one row per -r/--ref-image, --ref-video,
+# --ref-audio and --ref-video-audio. The CLI pairs --ref-video-audio with
+# --ref-video by index, so the row order of each list is the order the flags
+# are emitted in. A row shows a thumbnail of its image, or of the first frame
+# of a video directory.
+REF_THUMB_SIZE = 48
+# The preview window draws the image no larger than this, so the window stays
+# small: a square image opens about 380x416 including the caption.
+REF_PREVIEW_MAX = (360, 360)
+REF_IMAGE_TYPES = [("Image Files", "*.png *.jpg *.jpeg *.webp *.bmp"), ("All Files", "*.*")]
+REF_AUDIO_TYPES = [("Audio Files", "*.wav *.mp3 *.flac *.ogg"), ("All Files", "*.*")]
+IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".webp", ".bmp")
+REF_KINDS = {
+    "image": {"label": "Ref Image (-r / --ref-image)", "browse": "file", "types": REF_IMAGE_TYPES, "title": "Select Reference Image", "thumb": True},
+    "video": {"label": "Ref Video (--ref-video)", "browse": "dir", "types": None, "title": "Select Reference Video Frame Directory", "thumb": True},
+    "audio": {"label": "Ref Audio (--ref-audio)", "browse": "file", "types": REF_AUDIO_TYPES, "title": "Select Reference Audio File", "thumb": False},
+    "video_audio": {"label": "Ref Video Audio (--ref-video-audio)", "browse": "file", "types": REF_AUDIO_TYPES, "title": "Select Reference Video Audio File", "thumb": False},
+}
 
 class GeneratorTab:
     """Manages the main Generator tab layout, parameter sidebar, collapsible sections, and preview/logs."""
@@ -110,14 +130,15 @@ class GeneratorTab:
         self.var_fps = app.var_fps
         self.var_video_seconds = app.var_video_seconds
         self.var_end_img = app.var_end_img
-        self.var_ref_img = app.var_ref_img
-        self.var_ref_video = app.var_ref_video
-        self.var_ref_audio = app.var_ref_audio
-        self.var_ref_video_audio = app.var_ref_video_audio
 
         # Rows of the LoRA list, filled by add_lora_row when the section is built
         # and rebuilt by set_lora_list on a profile load.
         self.lora_rows = []
+
+        # Reference rows per kind, and the frame each kind's rows are packed into.
+        # Both are filled by build_ui, then rebuilt by set_ref_rows on a profile load.
+        self.ref_rows = {kind: [] for kind in REF_KINDS}
+        self.ref_frames = {}
 
         # Prompt box heights are persisted so a dragged size survives restarts.
         settings = settings_store.read_settings()
@@ -566,6 +587,8 @@ class GeneratorTab:
         tk.Label(f_hires, text="Input Image (-i)", bg=self.bg_card, fg=self.text_secondary).grid(row=r_sub, column=0, sticky='w', pady=4)
         init_frame = tk.Frame(f_hires, bg=self.bg_card)
         init_frame.grid(row=r_sub, column=1, sticky='we', pady=4, padx=(8, 0))
+        # Preview cell first, so it sits at the left of the row like the reference rows.
+        self.init_img_row = self.make_preview_cell(init_frame, self.var_init_img)
         
         entry_init = styles.create_custom_entry(init_frame, textvariable=self.var_init_img)
         entry_init.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5), ipady=3)
@@ -573,11 +596,15 @@ class GeneratorTab:
         
         btn_browse_init = ttk.Button(init_frame, text=">", width=2, command=self.browse_init_image)
         btn_browse_init.pack(side=tk.LEFT)
+        # The preview tracks the field, so picking a file, typing a path, or
+        # loading a profile all refresh the cell.
+        self.var_init_img.trace_add("write", lambda *_: self.update_ref_thumb(self.init_img_row))
         r_sub += 1
 
         tk.Label(f_hires, text="End Image (--end-img)", bg=self.bg_card, fg=self.text_secondary).grid(row=r_sub, column=0, sticky='w', pady=4)
         end_frame = tk.Frame(f_hires, bg=self.bg_card)
         end_frame.grid(row=r_sub, column=1, sticky='we', pady=4, padx=(8, 0))
+        self.end_img_row = self.make_preview_cell(end_frame, self.var_end_img)
         
         entry_end = styles.create_custom_entry(end_frame, textvariable=self.var_end_img)
         entry_end.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5), ipady=3)
@@ -585,6 +612,7 @@ class GeneratorTab:
         
         btn_browse_end = ttk.Button(end_frame, text=">", width=2, command=self.browse_end_image)
         btn_browse_end.pack(side=tk.LEFT)
+        self.var_end_img.trace_add("write", lambda *_: self.update_ref_thumb(self.end_img_row))
         r_sub += 1
 
         tk.Label(f_hires, text="Denoise / Hires Fix", bg=self.bg_card, fg=self.text_secondary).grid(row=r_sub, column=0, sticky='w', pady=4)
@@ -665,45 +693,19 @@ class GeneratorTab:
         f_ref.columnconfigure(1, weight=1)
         r_sub = 0
 
-        tk.Label(f_ref, text="Ref Image (-r / --ref-image)", bg=self.bg_card, fg=self.text_secondary).grid(row=r_sub, column=0, sticky='w', pady=4)
-        ref_img_frame = tk.Frame(f_ref, bg=self.bg_card)
-        ref_img_frame.grid(row=r_sub, column=1, sticky='we', pady=4, padx=(8, 0))
-        entry_ref_img = styles.create_custom_entry(ref_img_frame, textvariable=self.var_ref_img)
-        entry_ref_img.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5), ipady=3)
-        entry_ref_img.bind("<KeyRelease>", lambda e: self.update_cmd_preview())
-        btn_browse_ref_img = ttk.Button(ref_img_frame, text=">", width=2, command=self.browse_ref_image)
-        btn_browse_ref_img.pack(side=tk.LEFT)
-        r_sub += 1
+        # One row list per reference kind: a label, then + Add and > on the first
+        # line, with the rows appended below by add_ref_row.
+        for kind, spec in REF_KINDS.items():
+            tk.Label(f_ref, text=spec["label"], bg=self.bg_card, fg=self.text_secondary).grid(row=r_sub, column=0, sticky='nw', pady=4)
+            ref_list_frame = tk.Frame(f_ref, bg=self.bg_card)
+            ref_list_frame.grid(row=r_sub, column=1, sticky='we', pady=4, padx=(8, 0))
+            self.ref_frames[kind] = ref_list_frame
 
-        tk.Label(f_ref, text="Ref Video (--ref-video)", bg=self.bg_card, fg=self.text_secondary).grid(row=r_sub, column=0, sticky='w', pady=4)
-        ref_vid_frame = tk.Frame(f_ref, bg=self.bg_card)
-        ref_vid_frame.grid(row=r_sub, column=1, sticky='we', pady=4, padx=(8, 0))
-        entry_ref_vid = styles.create_custom_entry(ref_vid_frame, textvariable=self.var_ref_video)
-        entry_ref_vid.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5), ipady=3)
-        entry_ref_vid.bind("<KeyRelease>", lambda e: self.update_cmd_preview())
-        btn_browse_ref_vid = ttk.Button(ref_vid_frame, text=">", width=2, command=self.browse_ref_video)
-        btn_browse_ref_vid.pack(side=tk.LEFT)
-        r_sub += 1
-
-        tk.Label(f_ref, text="Ref Audio (--ref-audio)", bg=self.bg_card, fg=self.text_secondary).grid(row=r_sub, column=0, sticky='w', pady=4)
-        ref_aud_frame = tk.Frame(f_ref, bg=self.bg_card)
-        ref_aud_frame.grid(row=r_sub, column=1, sticky='we', pady=4, padx=(8, 0))
-        entry_ref_aud = styles.create_custom_entry(ref_aud_frame, textvariable=self.var_ref_audio)
-        entry_ref_aud.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5), ipady=3)
-        entry_ref_aud.bind("<KeyRelease>", lambda e: self.update_cmd_preview())
-        btn_browse_ref_aud = ttk.Button(ref_aud_frame, text=">", width=2, command=self.browse_ref_audio)
-        btn_browse_ref_aud.pack(side=tk.LEFT)
-        r_sub += 1
-
-        tk.Label(f_ref, text="Ref Video Audio (--ref-video-audio)", bg=self.bg_card, fg=self.text_secondary).grid(row=r_sub, column=0, sticky='w', pady=4)
-        ref_vaud_frame = tk.Frame(f_ref, bg=self.bg_card)
-        ref_vaud_frame.grid(row=r_sub, column=1, sticky='we', pady=4, padx=(8, 0))
-        entry_ref_vaud = styles.create_custom_entry(ref_vaud_frame, textvariable=self.var_ref_video_audio)
-        entry_ref_vaud.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5), ipady=3)
-        entry_ref_vaud.bind("<KeyRelease>", lambda e: self.update_cmd_preview())
-        btn_browse_ref_vaud = ttk.Button(ref_vaud_frame, text=">", width=2, command=self.browse_ref_video_audio)
-        btn_browse_ref_vaud.pack(side=tk.LEFT)
-        r_sub += 1
+            ref_add_frame = tk.Frame(ref_list_frame, bg=self.bg_card)
+            ref_add_frame.pack(fill=tk.X)
+            ttk.Button(ref_add_frame, text="+ Add", width=6, command=lambda k=kind: self.add_ref_row(k)).pack(side=tk.LEFT, padx=(0, 4))
+            ttk.Button(ref_add_frame, text=">", width=2, command=lambda k=kind: self.browse_ref_file(k)).pack(side=tk.LEFT)
+            r_sub += 1
 
         # 7. Section: Cache Settings
         c_cache = CollapsibleFrame(scroll_frame, title="Cache Settings", bg_card=self.bg_card, accent_blue=self.accent_blue, text_primary=self.text_primary, expanded=False, on_toggle=self.update_scrollregion)
@@ -981,7 +983,7 @@ class GeneratorTab:
         self.form_canvas.configure(scrollregion=self.form_canvas.bbox("all"))
 
     def browse_model(self):
-        filename = filedialog.askopenfilename(
+        filename = file_picker.pick_file(
             title="Select Diffusion Model",
             filetypes=[("Model Files", "*.safetensors *.gguf *.ckpt"), ("All Files", "*.*")]
         )
@@ -992,7 +994,7 @@ class GeneratorTab:
             self.update_cmd_preview()
 
     def browse_t5xxl(self):
-        filename = filedialog.askopenfilename(
+        filename = file_picker.pick_file(
             title="Select T5XXL Text Encoder",
             filetypes=[("Model Files", "*.safetensors *.gguf *.ckpt"), ("All Files", "*.*")]
         )
@@ -1003,7 +1005,7 @@ class GeneratorTab:
             self.update_cmd_preview()
 
     def browse_llm(self):
-        filename = filedialog.askopenfilename(
+        filename = file_picker.pick_file(
             title="Select LLM Text Encoder",
             filetypes=[("Model Files", "*.safetensors *.gguf *.ckpt"), ("All Files", "*.*")]
         )
@@ -1014,7 +1016,7 @@ class GeneratorTab:
             self.update_cmd_preview()
 
     def browse_vae(self):
-        filename = filedialog.askopenfilename(
+        filename = file_picker.pick_file(
             title="Select VAE Decoder",
             filetypes=[("Model Files", "*.safetensors *.gguf *.ckpt"), ("All Files", "*.*")]
         )
@@ -1026,7 +1028,7 @@ class GeneratorTab:
 
     def browse_init_image(self):
 
-        filename = filedialog.askopenfilename(
+        filename = file_picker.pick_file(
             title="Select Input Image for img2img",
             filetypes=[("Image Files", "*.png *.jpg *.jpeg *.webp *.bmp"), ("All Files", "*.*")]
         )
@@ -1038,7 +1040,7 @@ class GeneratorTab:
 
     def browse_lora_dir(self):
         """Adds a row for a LoRA file picked from anywhere on disk."""
-        filename = filedialog.askopenfilename(
+        filename = file_picker.pick_file(
             title="Select LoRA Model",
             filetypes=[("LoRA Files", "*.safetensors *.gguf *.ckpt *.pt"), ("All Files", "*.*")]
         )
@@ -1118,7 +1120,7 @@ class GeneratorTab:
             row["combo"]["values"] = values
 
     def browse_llm_vision(self):
-        filename = filedialog.askopenfilename(
+        filename = file_picker.pick_file(
             title="Select LLM Vision Tower",
             filetypes=[("Model Files", "*.safetensors *.gguf *.ckpt"), ("All Files", "*.*")]
         )
@@ -1129,7 +1131,7 @@ class GeneratorTab:
             self.update_cmd_preview()
 
     def browse_audio_vae(self):
-        filename = filedialog.askopenfilename(
+        filename = file_picker.pick_file(
             title="Select Audio VAE Decoder",
             filetypes=[("Model Files", "*.safetensors *.gguf *.ckpt"), ("All Files", "*.*")]
         )
@@ -1140,7 +1142,7 @@ class GeneratorTab:
             self.update_cmd_preview()
 
     def browse_end_image(self):
-        filename = filedialog.askopenfilename(
+        filename = file_picker.pick_file(
             title="Select End Frame Image for FL2VA",
             filetypes=[("Image Files", "*.png *.jpg *.jpeg *.webp *.bmp"), ("All Files", "*.*")]
         )
@@ -1148,56 +1150,194 @@ class GeneratorTab:
             self.var_end_img.set(filename)
             self.update_cmd_preview()
 
-    def browse_ref_image(self):
-        filename = filedialog.askopenfilename(
-            title="Select Reference Image (-r / --ref-image)",
-            filetypes=[("Image Files", "*.png *.jpg *.jpeg *.webp *.bmp"), ("All Files", "*.*")]
-        )
-        if filename:
-            current = self.var_ref_img.get().strip()
-            if current:
-                self.var_ref_img.set(f"{current}, {filename}")
-            else:
-                self.var_ref_img.set(filename)
-            self.update_cmd_preview()
+    def make_preview_cell(self, parent, var, kind="image"):
+        """Adds the reference-row preview cell to a path row: a fixed square
+        showing the image named by `var`, clickable to open it in the preview
+        window. Built as a fixed-size cell so the row height does not change when
+        a thumbnail loads. Returns the row dict the preview helpers take, so the
+        field shares `update_ref_thumb` and `preview_ref_image` with the reference
+        rows instead of having its own copy of that behaviour."""
+        cell = tk.Frame(parent, bg=self.bg_main, bd=1, relief=tk.SOLID,
+                        highlightbackground=self.border_color,
+                        width=REF_THUMB_SIZE, height=REF_THUMB_SIZE)
+        cell.pack(side=tk.LEFT, padx=(0, 5))
+        cell.pack_propagate(False)
+        thumb = tk.Label(cell, bg=self.bg_main, fg=self.text_secondary,
+                         text="?", font=styles.FONT_SMALL)
+        thumb.pack(expand=True)
+        row = {"kind": kind, "path": var, "thumb": thumb, "photo": None, "cell": cell}
+        # The cell is bound as well as the label, so the click lands on the whole
+        # preview square, exactly as in the reference rows.
+        thumb.bind("<Button-1>", lambda e, r=row: self.preview_ref_image(r))
+        cell.bind("<Button-1>", lambda e, r=row: self.preview_ref_image(r))
+        thumb.config(cursor="hand2")
+        cell.config(cursor="hand2")
+        self.update_ref_thumb(row)
+        return row
 
-    def browse_ref_video(self):
-        directory = filedialog.askdirectory(
-            title="Select Reference Video Directory (--ref-video)"
-        )
-        if directory:
-            current = self.var_ref_video.get().strip()
-            if current:
-                self.var_ref_video.set(f"{current}, {directory}")
-            else:
-                self.var_ref_video.set(directory)
-            self.update_cmd_preview()
+    def add_ref_row(self, kind, path=""):
+        """Adds one reference row: preview, path, remove. Row order is the order
+        the CLI flags are emitted in, which is how --ref-video-audio pairs with
+        --ref-video by index."""
+        spec = REF_KINDS[kind]
+        row_frame = tk.Frame(self.ref_frames[kind], bg=self.bg_card)
+        row_frame.pack(fill=tk.X, pady=1)
+        row = {"kind": kind, "frame": row_frame, "path": tk.StringVar(value=path), "photo": None}
 
-    def browse_ref_audio(self):
-        filename = filedialog.askopenfilename(
-            title="Select Reference Audio File (--ref-audio)",
-            filetypes=[("Audio Files", "*.wav *.mp3 *.flac *.ogg"), ("All Files", "*.*")]
-        )
-        if filename:
-            current = self.var_ref_audio.get().strip()
-            if current:
-                self.var_ref_audio.set(f"{current}, {filename}")
-            else:
-                self.var_ref_audio.set(filename)
-            self.update_cmd_preview()
+        if spec["thumb"]:
+            # A fixed cell so the row height does not change when a thumbnail loads.
+            cell = tk.Frame(row_frame, bg=self.bg_main, bd=1, relief=tk.SOLID,
+                            highlightbackground=self.border_color,
+                            width=REF_THUMB_SIZE, height=REF_THUMB_SIZE)
+            cell.pack(side=tk.LEFT, padx=(0, 5))
+            cell.pack_propagate(False)
+            thumb = tk.Label(cell, bg=self.bg_main, fg=self.text_secondary,
+                             text="?", font=styles.FONT_SMALL)
+            thumb.pack(expand=True)
+            row["thumb"] = thumb
+            # Clicking the preview opens the image in a larger window. The cell
+            # is bound too, so the click lands on the whole preview square.
+            thumb.bind("<Button-1>", lambda e, r=row: self.preview_ref_image(r))
+            cell.bind("<Button-1>", lambda e, r=row: self.preview_ref_image(r))
+            thumb.config(cursor="hand2")
+            cell.config(cursor="hand2")
 
-    def browse_ref_video_audio(self):
-        filename = filedialog.askopenfilename(
-            title="Select Reference Video Audio File (--ref-video-audio)",
-            filetypes=[("Audio Files", "*.wav *.mp3 *.flac *.ogg"), ("All Files", "*.*")]
-        )
-        if filename:
-            current = self.var_ref_video_audio.get().strip()
-            if current:
-                self.var_ref_video_audio.set(f"{current}, {filename}")
-            else:
-                self.var_ref_video_audio.set(filename)
-            self.update_cmd_preview()
+        entry = styles.create_custom_entry(row_frame, textvariable=row["path"])
+        entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5), ipady=3)
+        entry.bind("<KeyRelease>", lambda e: self.on_ref_path_change(row))
+
+        btn = ttk.Button(row_frame, text="x", width=2, command=lambda: self.remove_ref_row(row))
+        btn.pack(side=tk.LEFT)
+
+        self.ref_rows[kind].append(row)
+        self.update_ref_thumb(row)
+        self.update_cmd_preview()
+        return row
+
+    def remove_ref_row(self, row):
+        """Removes one reference row and its widgets."""
+        row["frame"].destroy()
+        if row in self.ref_rows[row["kind"]]:
+            self.ref_rows[row["kind"]].remove(row)
+        self.update_cmd_preview()
+
+    def on_ref_path_change(self, row):
+        """A typed path updates its preview and the command preview."""
+        self.update_ref_thumb(row)
+        self.update_cmd_preview()
+
+    def preview_ref_image(self, row):
+        """Opens the row's image, or the first frame of its video directory, in
+        a preview window at a larger size. The window keeps the PhotoImage
+        referenced, or the label draws blank. Audio rows have no preview, and an
+        empty or unreadable path opens nothing."""
+        path = row["path"].get().strip()
+        if not path:
+            return
+        img = self.ref_preview_source(path, row["kind"])
+        if img is None:
+            return
+        preview = img.copy()
+        preview.thumbnail((REF_PREVIEW_MAX[0], REF_PREVIEW_MAX[1]))
+        # Title from the file the preview came from, so a video row names the
+        # frame it shows, not the frame directory.
+        source = getattr(img, "filename", None)
+        win = tk.Toplevel(self.app.root)
+        win.title(os.path.basename(source) if source else os.path.basename(path))
+        win.configure(bg=self.bg_main)
+        # Geometry from the preview size plus the caption line, so the window
+        # opens exactly around the image.
+        win.geometry(f"{preview.width + 20}x{preview.height + 56}")
+        photo = ImageTk.PhotoImage(preview)
+        label = tk.Label(win, image=photo, bg=self.bg_main)
+        label.pack(padx=10, pady=(10, 0))
+        caption = tk.Label(win, text=self.full_ref_path(path), bg=self.bg_main,
+                           fg=self.text_secondary, font=styles.FONT_SMALL,
+                           wraplength=preview.width)
+        caption.pack(padx=10, pady=(4, 10))
+        win.photo = photo
+        # The size is fixed to the image: Hyprland only honours a geometry
+        # request when the window is not resizable, which is what made a
+        # 380x304 request open as 357x683.
+        win.resizable(False, False)
+        win.bind("<Escape>", lambda e: win.destroy())
+
+    def full_ref_path(self, path):
+        """Resolves a workspace-relative reference path to an absolute one."""
+        return path if os.path.isabs(path) else os.path.join(self.app.WORKSPACE_DIR, path)
+
+    def ref_preview_source(self, path, kind):
+        """Opens the image a row previews: the file itself for an image row, the
+        first frame alphabetically for a video-directory row. Returns None when
+        the path is missing or unreadable, and for the audio kinds, which have
+        no preview. The row thumbnail and the preview window share this one."""
+        full = self.full_ref_path(path)
+        if kind == "image" and os.path.isfile(full):
+            try:
+                return Image.open(full)
+            except (OSError, Image.DecompressionBombError):
+                return None
+        if kind == "video" and os.path.isdir(full):
+            frames = sorted(name for name in os.listdir(full)
+                            if name.lower().endswith(IMAGE_EXTS))
+            if frames:
+                try:
+                    return Image.open(os.path.join(full, frames[0]))
+                except (OSError, Image.DecompressionBombError):
+                    return None
+        return None
+
+    def update_ref_thumb(self, row):
+        """Shows the reference image, or the first frame of a video directory,
+        in the row. Audio rows have no preview. An empty row shows a blank cell;
+        a row whose file cannot be read shows a ?."""
+        thumb = row.get("thumb")
+        if thumb is None:
+            return
+        path = row["path"].get().strip()
+        if not path:
+            row["photo"] = None
+            thumb.config(image="", text="")
+            return
+        img = self.ref_preview_source(path, row["kind"])
+        if img is None:
+            row["photo"] = None
+            thumb.config(image="", text="?")
+            return
+        img.thumbnail((REF_THUMB_SIZE, REF_THUMB_SIZE))
+        # The PhotoImage must stay referenced by the row, or the label draws blank.
+        row["photo"] = ImageTk.PhotoImage(img)
+        thumb.config(image=row["photo"], text="")
+
+    def get_ref_paths(self, kind):
+        """The non-empty paths of one reference row list, in row order."""
+        return [row["path"].get().strip() for row in self.ref_rows[kind] if row["path"].get().strip()]
+
+    def get_ref_string(self, kind):
+        """Serialises a reference row list for a profile .env, as a comma list."""
+        return ", ".join(self.get_ref_paths(kind))
+
+    def set_ref_rows(self, kind, value):
+        """Rebuilds a reference row list from a profile's comma-separated value."""
+        for row in list(self.ref_rows[kind]):
+            row["frame"].destroy()
+            self.ref_rows[kind].remove(row)
+        for chunk in value.split(","):
+            if chunk.strip():
+                self.add_ref_row(kind, path=chunk.strip())
+
+    def browse_ref_file(self, kind):
+        """Picks a reference file, or a frame directory for --ref-video, and
+        adds a row for it."""
+        spec = REF_KINDS[kind]
+        if spec["browse"] == "dir":
+            picked = file_picker.pick_directory(title=spec["title"])
+        else:
+            picked = file_picker.pick_file(title=spec["title"], filetypes=spec["types"])
+        if picked:
+            if picked.startswith(self.app.WORKSPACE_DIR):
+                picked = os.path.relpath(picked, self.app.WORKSPACE_DIR)
+            self.add_ref_row(kind, path=picked)
 
     def on_prompt_height(self, lines, committed):
         """Keeps the dragged prompt height, persisting it when a drag is released."""

@@ -157,11 +157,7 @@ class DesktopManager:
         self.var_llm_vision = tk.StringVar(value="")
         self.var_fps = tk.StringVar(value="")
         self.var_end_img = tk.StringVar(value="")
-        self.var_ref_img = tk.StringVar(value="")
-        self.var_ref_video = tk.StringVar(value="")
-        self.var_ref_audio = tk.StringVar(value="")
-        self.var_ref_video_audio = tk.StringVar(value="")
-        
+
         self.profile_list = []
         self.scanned_models = []
         self.scanned_loras = []
@@ -416,25 +412,12 @@ class DesktopManager:
         if end_img:
             cmd += ["--end-img", end_img]
 
-        ref_img = self.var_ref_img.get().strip()
-        if ref_img:
-            for path in [p.strip() for p in ref_img.split(',') if p.strip()]:
-                cmd += ["-r", path]
-
-        ref_video = self.var_ref_video.get().strip()
-        if ref_video:
-            for path in [p.strip() for p in ref_video.split(',') if p.strip()]:
-                cmd += ["--ref-video", path]
-
-        ref_audio = self.var_ref_audio.get().strip()
-        if ref_audio:
-            for path in [p.strip() for p in ref_audio.split(',') if p.strip()]:
-                cmd += ["--ref-audio", path]
-
-        ref_video_audio = self.var_ref_video_audio.get().strip()
-        if ref_video_audio:
-            for path in [p.strip() for p in ref_video_audio.split(',') if p.strip()]:
-                cmd += ["--ref-video-audio", path]
+        # Reference rows are the source of truth: one flag per row, in row order.
+        # --ref-video-audio pairs with --ref-video by index, so the video row list
+        # and the audio row list must keep the same order.
+        for flag, kind in [("-r", "image"), ("--ref-video", "video"), ("--ref-audio", "audio"), ("--ref-video-audio", "video_audio")]:
+            for path in generator_tab.get_ref_paths(kind):
+                cmd += [flag, path]
 
         cache = self.var_cache.get()
         if cache != "none":
@@ -594,10 +577,10 @@ class DesktopManager:
         
         if "INIT_IMG" in config: self.var_init_img.set(config["INIT_IMG"])
         if "END_IMG" in config: self.var_end_img.set(config["END_IMG"])
-        if "REF_IMAGE" in config: self.var_ref_img.set(config["REF_IMAGE"])
-        if "REF_VIDEO" in config: self.var_ref_video.set(config["REF_VIDEO"])
-        if "REF_AUDIO" in config: self.var_ref_audio.set(config["REF_AUDIO"])
-        if "REF_VIDEO_AUDIO" in config: self.var_ref_video_audio.set(config["REF_VIDEO_AUDIO"])
+        if "REF_IMAGE" in config: self.generator_tab.set_ref_rows("image", config["REF_IMAGE"])
+        if "REF_VIDEO" in config: self.generator_tab.set_ref_rows("video", config["REF_VIDEO"])
+        if "REF_AUDIO" in config: self.generator_tab.set_ref_rows("audio", config["REF_AUDIO"])
+        if "REF_VIDEO_AUDIO" in config: self.generator_tab.set_ref_rows("video_audio", config["REF_VIDEO_AUDIO"])
         if "STRENGTH" in config: self.var_strength.set(config["STRENGTH"])
         if "HIRES" in config: self.var_hires.set(config["HIRES"].lower() == "true")
         if "HIRES_SCALE" in config: self.var_hires_scale.set(config["HIRES_SCALE"])
@@ -690,10 +673,10 @@ class DesktopManager:
             "CACHE_OPTION": self.var_cache_option.get().strip(),
             "INIT_IMG": self.var_init_img.get().strip(),
             "END_IMG": self.var_end_img.get().strip(),
-            "REF_IMAGE": self.var_ref_img.get().strip(),
-            "REF_VIDEO": self.var_ref_video.get().strip(),
-            "REF_AUDIO": self.var_ref_audio.get().strip(),
-            "REF_VIDEO_AUDIO": self.var_ref_video_audio.get().strip(),
+            "REF_IMAGE": self.generator_tab.get_ref_string("image"),
+            "REF_VIDEO": self.generator_tab.get_ref_string("video"),
+            "REF_AUDIO": self.generator_tab.get_ref_string("audio"),
+            "REF_VIDEO_AUDIO": self.generator_tab.get_ref_string("video_audio"),
             "STRENGTH": self.var_strength.get().strip(),
             "HIRES": str(self.var_hires.get()).lower(),
             "HIRES_SCALE": self.var_hires_scale.get().strip(),
