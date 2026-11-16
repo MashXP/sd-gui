@@ -115,6 +115,10 @@ class GeneratorTab:
         self.var_ref_audio = app.var_ref_audio
         self.var_ref_video_audio = app.var_ref_video_audio
 
+        # Rows of the LoRA list, filled by add_lora_row when the section is built
+        # and rebuilt by set_lora_list on a profile load.
+        self.lora_rows = []
+
         # Prompt box heights are persisted so a dragged size survives restarts.
         settings = settings_store.read_settings()
         self._prompt_lines = self._clamped_lines(settings.get("prompt_lines"), DEFAULT_PROMPT_LINES)
@@ -532,16 +536,16 @@ class GeneratorTab:
         entry_lora_str.bind("<KeyRelease>", lambda e: self.update_cmd_preview())
         r_sub += 1
 
-        tk.Label(f_lora, text="LoRA Directory / Model", bg=self.bg_card, fg=self.text_secondary).grid(row=r_sub, column=0, sticky='w', pady=4)
-        lora_frame = tk.Frame(f_lora, bg=self.bg_card)
-        lora_frame.grid(row=r_sub, column=1, sticky='we', pady=4, padx=(8, 0))
-        
-        self.combo_lora_dir = ttk.Combobox(lora_frame, textvariable=self.var_lora_dir, style='TCombobox')
-        self.combo_lora_dir.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5), ipady=3)
-        setup_filterable_combobox(self.combo_lora_dir, lambda: ["lora"] + self.app.scanned_loras, lambda e=None: self.update_cmd_preview())
-        
-        btn_browse_lora = ttk.Button(lora_frame, text=">", width=2, command=self.browse_lora_dir)
-        btn_browse_lora.pack(side=tk.LEFT)
+        tk.Label(f_lora, text="LoRA List", bg=self.bg_card, fg=self.text_secondary).grid(row=r_sub, column=0, sticky='nw', pady=4)
+        lora_list_frame = tk.Frame(f_lora, bg=self.bg_card)
+        lora_list_frame.grid(row=r_sub, column=1, sticky='we', pady=4, padx=(8, 0))
+        self.lora_list_frame = lora_list_frame
+
+        lora_add_frame = tk.Frame(lora_list_frame, bg=self.bg_card)
+        lora_add_frame.pack(fill=tk.X)
+        ttk.Button(lora_add_frame, text="+ Add", width=6, command=self.add_lora_row).pack(side=tk.LEFT, padx=(0, 4))
+        ttk.Button(lora_add_frame, text=">", width=2, command=self.browse_lora_dir).pack(side=tk.LEFT)
+        # Rows are appended below by add_lora_row: one per LoRA.
         r_sub += 1
 
         tk.Label(f_lora, text="LoRA Apply Mode", bg=self.bg_card, fg=self.text_secondary).grid(row=r_sub, column=0, sticky='w', pady=4)
@@ -1033,12 +1037,85 @@ class GeneratorTab:
             self.update_cmd_preview()
 
     def browse_lora_dir(self):
-        directory = filedialog.askdirectory(
-            title="Select LoRA Model Directory"
+        """Adds a row for a LoRA file picked from anywhere on disk."""
+        filename = filedialog.askopenfilename(
+            title="Select LoRA Model",
+            filetypes=[("LoRA Files", "*.safetensors *.gguf *.ckpt *.pt"), ("All Files", "*.*")]
         )
-        if directory:
-            self.var_lora_dir.set(directory)
-            self.update_cmd_preview()
+        if filename:
+            if filename.startswith(self.app.WORKSPACE_DIR):
+                filename = os.path.relpath(filename, self.app.WORKSPACE_DIR)
+            self.add_lora_row(path=filename)
+
+    def add_lora_row(self, path="", strength="1.0", enabled=True):
+        """Adds one LoRA row: on/off, model, strength, remove."""
+        row_frame = tk.Frame(self.lora_list_frame, bg=self.bg_card)
+        row_frame.pack(fill=tk.X, pady=1)
+        row = {
+            "frame": row_frame,
+            "enabled": tk.BooleanVar(value=enabled),
+            "path": tk.StringVar(value=path),
+            "strength": tk.StringVar(value=strength),
+        }
+
+        chk = tk.Checkbutton(
+            row_frame, variable=row["enabled"],
+            bg=self.bg_card, fg=self.text_primary, selectcolor=self.bg_main,
+            activebackground=self.bg_card, activeforeground=self.text_primary,
+            font=styles.FONT_MAIN, command=self.update_cmd_preview
+        )
+        chk.pack(side=tk.LEFT, padx=(0, 4))
+
+        combo = ttk.Combobox(row_frame, textvariable=row["path"], style='TCombobox')
+        combo.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 4), ipady=3)
+        setup_filterable_combobox(combo, lambda: ["lora"] + self.app.scanned_loras, lambda e=None: self.update_cmd_preview())
+        row["combo"] = combo
+
+        entry = styles.create_custom_entry(row_frame, textvariable=row["strength"], width=5)
+        entry.pack(side=tk.LEFT, padx=(0, 4), ipady=3)
+        entry.bind("<KeyRelease>", lambda e: self.update_cmd_preview())
+
+        btn = ttk.Button(row_frame, text="x", width=2, command=lambda: self.remove_lora_row(row))
+        btn.pack(side=tk.LEFT)
+
+        self.lora_rows.append(row)
+        self.update_cmd_preview()
+        return row
+
+    def remove_lora_row(self, row):
+        """Removes one LoRA row and its widgets."""
+        row["frame"].destroy()
+        if row in self.lora_rows:
+            self.lora_rows.remove(row)
+        self.update_cmd_preview()
+
+    def get_lora_rows(self):
+        """Returns the rows as (path, strength, enabled), in display order."""
+        return [(row["path"].get().strip(), row["strength"].get().strip(), row["enabled"].get()) for row in self.lora_rows]
+
+    def get_lora_list_string(self):
+        """Serialises the rows for a profile .env, one entry per LoRA."""
+        return ";".join(f"{path}|{strength}|{'1' if enabled else '0'}" for path, strength, enabled in self.get_lora_rows())
+
+    def set_lora_list(self, value):
+        """Rebuilds the rows from a serialised list, as loaded from a profile."""
+        for row in list(self.lora_rows):
+            row["frame"].destroy()
+            self.lora_rows.remove(row)
+        for chunk in value.split(";"):
+            if not chunk.strip():
+                continue
+            parts = chunk.split("|")
+            path = parts[0].strip()
+            strength = parts[1].strip() if len(parts) > 1 and parts[1].strip() else "1.0"
+            enabled = len(parts) > 2 and parts[2].strip() == "1"
+            self.add_lora_row(path=path, strength=strength, enabled=enabled)
+
+    def refresh_lora_combos(self):
+        """Re-seeds every row's dropdown after a workspace rescan."""
+        values = ["", "lora"] + self.app.scanned_loras
+        for row in self.lora_rows:
+            row["combo"]["values"] = values
 
     def browse_llm_vision(self):
         filename = filedialog.askopenfilename(

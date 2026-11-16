@@ -215,8 +215,7 @@ class DesktopManager:
         for combo in combo_list:
             combo['values'] = [""] + self.scanned_models
             
-        if hasattr(self.generator_tab, 'combo_lora_dir'):
-            self.generator_tab.combo_lora_dir['values'] = ["", "lora"] + self.scanned_loras
+        self.generator_tab.refresh_lora_combos()
 
     def refresh_cli_options(self):
         """Re-reads the binary's supported samplers and schedulers.
@@ -326,15 +325,21 @@ class DesktopManager:
         if art_style and art_style != "None":
             prompt = apply_art_style_to_prompt(art_style, prompt)
 
+        lora_rows = generator_tab.get_lora_rows()
         if self.var_lora_enabled.get():
-            lora_val = self.var_lora_dir.get().strip()
-            strength_val = self.var_lora_strength.get().strip() or "1.0"
-            if lora_val:
-                full_lora = os.path.join(WORKSPACE_DIR, lora_val) if not os.path.isabs(lora_val) else lora_val
-                if os.path.isfile(full_lora):
-                    lora_stem = os.path.splitext(os.path.basename(lora_val))[0]
-                    if "<lora:" not in prompt.lower():
-                        prompt = f"{prompt} <lora:{lora_stem}:{strength_val}>".strip()
+            multiplier = self._parse_float(self.var_lora_strength.get(), 1.0)
+            for path, strength, enabled in lora_rows:
+                if not (path and enabled):
+                    continue
+                full_lora = os.path.join(WORKSPACE_DIR, path) if not os.path.isabs(path) else path
+                if not os.path.isfile(full_lora):
+                    continue
+                lora_stem = os.path.splitext(os.path.basename(path))[0]
+                # The row strength and the global multiplier combine into the
+                # weight the CLI reads out of the prompt tag.
+                tag = f"<lora:{lora_stem}:{self._format_weight(multiplier * self._parse_float(strength, 1.0))}>"
+                if tag.lower() not in prompt.lower():
+                    prompt = f"{prompt} {tag}".strip()
                     
         if prompt:
             cmd += ["-p", prompt]
@@ -469,13 +474,12 @@ class DesktopManager:
             cmd += ["--vae-tile-size", vsize]
             
         if self.var_lora_enabled.get():
-            lora_dir = self.var_lora_dir.get().strip()
-            if lora_dir:
-                full_lora = os.path.join(WORKSPACE_DIR, lora_dir) if not os.path.isabs(lora_dir) else lora_dir
-                if os.path.isfile(full_lora):
-                    lora_dir = os.path.dirname(lora_dir) or "."
+            lora_paths = [path for path, _, enabled in lora_rows if path and enabled]
+            if lora_paths:
+                # One directory for the CLI to load the tags from: the directory
+                # of the first enabled LoRA.
+                lora_dir = os.path.dirname(lora_paths[0]) or "."
                 cmd += ["--lora-model-dir", lora_dir]
-                
             lora_mode = self.var_lora_apply_mode.get().strip()
             if lora_mode:
                 cmd += ["--lora-apply-mode", lora_mode]
@@ -513,6 +517,19 @@ class DesktopManager:
                 cmd += ["--listen-port", port]
                 
         return cmd
+
+    @staticmethod
+    def _parse_float(value, default):
+        """Reads a float field, falling back to the default on junk."""
+        try:
+            return float(str(value).strip())
+        except (TypeError, ValueError):
+            return default
+
+    @staticmethod
+    def _format_weight(weight):
+        """Writes a LoRA weight without trailing zeros, e.g. 1.0 -> 1."""
+        return f"{weight:g}"
 
     def copy_command(self):
         cmd = self.build_command_list()
@@ -595,6 +612,12 @@ class DesktopManager:
         if "LORA_ENABLED" in config: self.var_lora_enabled.set(config["LORA_ENABLED"].lower() == "true")
         if "LORA_STRENGTH" in config: self.var_lora_strength.set(config["LORA_STRENGTH"])
         if "LORA_MULTIPLIER" in config: self.var_lora_strength.set(config["LORA_MULTIPLIER"])
+        if "LORA_LIST" in config:
+            self.generator_tab.set_lora_list(config["LORA_LIST"])
+        elif config.get("LORA_MODEL_DIR", "").strip():
+            # Older profiles store one LoRA as a single path: show it as one row.
+            enabled = "1" if self.var_lora_enabled.get() else "0"
+            self.generator_tab.set_lora_list(f"{config['LORA_MODEL_DIR'].strip()}|{self.var_lora_strength.get()}|{enabled}")
         
         if "CIRCULAR" in config: self.var_circular.set(config["CIRCULAR"].lower() == "true")
         if "DISABLE_IMAGE_METADATA" in config: self.var_disable_metadata.set(config["DISABLE_IMAGE_METADATA"].lower() == "true")
@@ -627,6 +650,11 @@ class DesktopManager:
         out_val = self.var_output.get().strip()
         if out_val and not out_val.startswith("output/"):
             out_val = f"output/{out_val}"
+
+        # LoRA rows are the source of truth; LORA_MODEL_DIR is kept as the
+        # directory of the first row so older profile readers still find it.
+        lora_rows = self.generator_tab.get_lora_rows()
+        lora_dir = os.path.dirname(lora_rows[0][0]) if lora_rows and lora_rows[0][0] else ""
 
         config = {
             "BINARY": self.var_binary.get(),
@@ -674,11 +702,12 @@ class DesktopManager:
             "SLG_SCALE": self.var_slg_scale.get().strip(),
             "SKIP_LAYERS": self.var_skip_layers.get().strip(),
             "VAE_TILE_SIZE": self.var_vae_tile_size.get().strip(),
-            "LORA_MODEL_DIR": self.var_lora_dir.get().strip(),
+            "LORA_MODEL_DIR": lora_dir,
             "LORA_APPLY_MODE": self.var_lora_apply_mode.get().strip(),
             "LORA_ENABLED": str(self.var_lora_enabled.get()).lower(),
             "LORA_STRENGTH": self.var_lora_strength.get().strip(),
             "LORA_MULTIPLIER": self.var_lora_strength.get().strip(),
+            "LORA_LIST": self.generator_tab.get_lora_list_string(),
             "CIRCULAR": str(self.var_circular.get()).lower(),
             "DISABLE_IMAGE_METADATA": str(self.var_disable_metadata.get()).lower(),
             "OUTPUT": out_val,
