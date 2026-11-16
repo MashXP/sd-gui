@@ -487,7 +487,8 @@ class DesktopManager:
         if self.var_offload.get():
             cmd += ["--offload-to-cpu"]
         if self.var_fa.get():
-            cmd += ["--diffusion-fa"]
+            # --diffusion-fa is deprecated; use the flash-attn flag instead
+            cmd += ["--flash-attn", "off,diffusion=on"]
         if self.var_circular.get():
             cmd += ["--circular"]
         if self.var_disable_metadata.get():
