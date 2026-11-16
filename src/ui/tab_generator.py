@@ -8,7 +8,8 @@ from tkinter import ttk, filedialog
 from PIL import Image, ImageTk
 import styles
 import resolution
-from ui.widgets import CollapsibleFrame, setup_filterable_combobox
+import settings_store
+from ui.widgets import CollapsibleFrame, ResizableTextFrame, setup_filterable_combobox
 from ui.tab_gallery import GalleryTab
 from ui.tab_prompt_helper import PromptHelperTab
 from ui.tab_history import HistoryTab
@@ -18,6 +19,13 @@ from art_styles import ART_STYLES
 MP_MIN = 0.1
 MP_MAX = 16.0
 MP_STEP = 0.1
+
+# Prompt box heights, in text lines. The drag grip clamps to this range, and the
+# height you drag to is kept in settings.json.
+MIN_LINES = 1
+MAX_LINES = 16
+DEFAULT_PROMPT_LINES = 3
+DEFAULT_NEG_LINES = 2
 
 class GeneratorTab:
     """Manages the main Generator tab layout, parameter sidebar, collapsible sections, and preview/logs."""
@@ -107,7 +115,21 @@ class GeneratorTab:
         self.var_ref_audio = app.var_ref_audio
         self.var_ref_video_audio = app.var_ref_video_audio
 
+        # Prompt box heights are persisted so a dragged size survives restarts.
+        settings = settings_store.read_settings()
+        self._prompt_lines = self._clamped_lines(settings.get("prompt_lines"), DEFAULT_PROMPT_LINES)
+        self._neg_lines = self._clamped_lines(settings.get("neg_prompt_lines"), DEFAULT_NEG_LINES)
+
         self.build_ui()
+
+    @staticmethod
+    def _clamped_lines(value, default):
+        """Reads a stored line count, falling back to the default on junk."""
+        try:
+            lines = int(value)
+        except (TypeError, ValueError):
+            return default
+        return max(MIN_LINES, min(lines, MAX_LINES))
 
     def build_ui(self):
         paned_win = tk.PanedWindow(self.parent, orient=tk.HORIZONTAL, bg=self.bg_main, bd=0, sashwidth=6, sashrelief=tk.FLAT)
@@ -263,32 +285,19 @@ class GeneratorTab:
         row += 1
         
         tk.Label(scroll_frame, text="Prompt", bg=self.bg_card, fg=self.text_secondary).grid(row=row, column=0, sticky='nw', pady=6)
-        prompt_frame = tk.Frame(scroll_frame, bg=self.bg_card)
-        prompt_frame.grid(row=row, column=1, sticky='we', pady=6, padx=(10, 0))
-        prompt_frame.columnconfigure(0, weight=1)
-        self.entry_prompt = styles.create_custom_text(prompt_frame, height=3)
-        self.entry_prompt.grid(row=0, column=0, sticky='nsew')
-        prompt_scroll = tk.Scrollbar(prompt_frame, orient="vertical", command=self.entry_prompt.yview)
-        prompt_scroll.grid(row=0, column=1, sticky='ns')
-        self.entry_prompt.configure(yscrollcommand=prompt_scroll.set)
+        # Drag the grip strip under the box to resize it; double-click resets it.
+        self.prompt_box = ResizableTextFrame(scroll_frame, height=self._prompt_lines, min_lines=MIN_LINES, max_lines=MAX_LINES, on_height=self.on_prompt_height, bg_card=self.bg_card)
+        self.prompt_box.grid(row=row, column=1, sticky='we', pady=6, padx=(10, 0))
+        self.entry_prompt = self.prompt_box.text
         self.entry_prompt.bind("<KeyRelease>", self.on_prompt_change)
-        for seq in ("<Button-4>", "<Button-5>", "<MouseWheel>"):
-            self.entry_prompt.bind(seq, self._scroll_text_widget, add="+")
         row += 1
         
         self.label_neg_prompt = tk.Label(scroll_frame, text="Negative Prompt", bg=self.bg_card, fg=self.text_secondary)
         self.label_neg_prompt.grid(row=row, column=0, sticky='nw', pady=6)
-        neg_frame = tk.Frame(scroll_frame, bg=self.bg_card)
-        neg_frame.grid(row=row, column=1, sticky='we', pady=6, padx=(10, 0))
-        neg_frame.columnconfigure(0, weight=1)
-        self.entry_neg_prompt = styles.create_custom_text(neg_frame, height=2)
-        self.entry_neg_prompt.grid(row=0, column=0, sticky='nsew')
-        neg_scroll = tk.Scrollbar(neg_frame, orient="vertical", command=self.entry_neg_prompt.yview)
-        neg_scroll.grid(row=0, column=1, sticky='ns')
-        self.entry_neg_prompt.configure(yscrollcommand=neg_scroll.set)
+        self.neg_box = ResizableTextFrame(scroll_frame, height=self._neg_lines, min_lines=MIN_LINES, max_lines=MAX_LINES, on_height=self.on_neg_height, bg_card=self.bg_card)
+        self.neg_box.grid(row=row, column=1, sticky='we', pady=6, padx=(10, 0))
+        self.entry_neg_prompt = self.neg_box.text
         self.entry_neg_prompt.bind("<KeyRelease>", self.on_neg_prompt_change)
-        for seq in ("<Button-4>", "<Button-5>", "<MouseWheel>"):
-            self.entry_neg_prompt.bind(seq, self._scroll_text_widget, add="+")
         row += 1
         
         tk.Label(scroll_frame, text="Image Size (W / H)", bg=self.bg_card, fg=self.text_secondary).grid(row=row, column=0, sticky='w', pady=6)
@@ -1113,11 +1122,25 @@ class GeneratorTab:
                 self.var_ref_video_audio.set(filename)
             self.update_cmd_preview()
 
+    def on_prompt_height(self, lines, committed):
+        """Keeps the dragged prompt height, persisting it when a drag is released."""
+        self._prompt_lines = lines
+        if committed:
+            settings_store.write_setting("prompt_lines", lines)
+        self.update_scrollregion()
+
+    def on_neg_height(self, lines, committed):
+        """Keeps the dragged negative-prompt height, persisting it on release."""
+        self._neg_lines = lines
+        if committed:
+            settings_store.write_setting("neg_prompt_lines", lines)
+        self.update_scrollregion()
+
     def update_layout_for_binary_mode(self):
         binary = self.var_binary.get()
         if binary == "sd-server":
             self.label_neg_prompt.grid_remove()
-            self.entry_neg_prompt.grid_remove()
+            self.neg_box.grid_remove()
             self.label_batch.grid_remove()
             self.batch_frame.grid_remove()
             self.label_output.grid_remove()
@@ -1126,7 +1149,7 @@ class GeneratorTab:
             self.listen_frame.grid()
         else:
             self.label_neg_prompt.grid()
-            self.entry_neg_prompt.grid()
+            self.neg_box.grid()
             self.label_batch.grid()
             self.batch_frame.grid()
             self.label_output.grid()
@@ -1143,13 +1166,6 @@ class GeneratorTab:
         cmd_string = shlex.join(preview_cmd)
         self.text_cmd_preview.delete("1.0", tk.END)
         self.text_cmd_preview.insert("1.0", cmd_string)
-
-    def _scroll_text_widget(self, event):
-        if event.num == 4 or (hasattr(event, 'delta') and event.delta > 0):
-            event.widget.yview_scroll(-1, "units")
-        else:
-            event.widget.yview_scroll(1, "units")
-        return "break"
 
     def on_random_seed_toggle(self):
         # The seed field always shows a concrete value. "Random" only controls
